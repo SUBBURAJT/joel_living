@@ -37,11 +37,12 @@ def approve_export_request(docname):
         lead_docs = frappe.get_all(
             "Lead",
             filters={"name": ["in", leads]},
-            fields=["name", "lead_name", "mobile_no", "email_id", "source"]
+            fields=["name", "lead_name", "mobile_no", "email_id","job_title", "custom_main_lead_source", "custom_project", "custom_lead_category", "country", "state", "city"]
         )
 
         if not lead_docs:
             frappe.throw("No leads found to export")
+
 
         # Clean rows for pandas
         rows = []
@@ -51,7 +52,15 @@ def approve_export_request(docname):
                 "Lead Name": ld.get("lead_name"),
                 "Mobile No": ld.get("mobile_no"),
                 "Email": ld.get("email_id"),
-                "Source": ld.get("source")
+                "Job Title": ld.get("job_title"),
+                "Main Lead Source": ld.get("custom_main_lead_source"),
+				"Project": ld.get("custom_project"),
+				"Lead category": ld.get("custom_lead_category"),
+				"Country": ld.get("country"),
+				"State/Province": ld.get("state"),
+				"City": ld.get("city"),
+    
+	
             })
 
         # Convert to Excel

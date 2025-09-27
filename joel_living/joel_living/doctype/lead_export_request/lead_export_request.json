@@ -1,0 +1,94 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "autoname": "format:LD-EXP-{MM}-{YYYY}-{###}",
+ "creation": "2025-09-27 10:59:50.319052",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "status",
+  "export_file",
+  "column_break_ceez",
+  "requested_by",
+  "requested_on",
+  "section_break_hybq",
+  "lead_list",
+  "rejected_notes"
+ ],
+ "fields": [
+  {
+   "default": "Pending Approval",
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "label": "Status",
+   "options": "Pending Approval\nApproved\nRejected\nFailed",
+   "read_only": 1
+  },
+  {
+   "fieldname": "requested_by",
+   "fieldtype": "Link",
+   "label": "Requested By",
+   "options": "User",
+   "read_only": 1
+  },
+  {
+   "fieldname": "requested_on",
+   "fieldtype": "Datetime",
+   "label": "Requested On",
+   "read_only": 1
+  },
+  {
+   "fieldname": "export_file",
+   "fieldtype": "Attach",
+   "label": "Export File",
+   "read_only": 1
+  },
+  {
+   "fieldname": "lead_list",
+   "fieldtype": "Small Text",
+   "label": "Lead List",
+   "read_only": 1
+  },
+  {
+   "fieldname": "rejected_notes",
+   "fieldtype": "Small Text",
+   "label": "Rejected Notes",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_ceez",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "section_break_hybq",
+   "fieldtype": "Section Break"
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2025-09-27 11:17:21.063807",
+ "modified_by": "Administrator",
+ "module": "Joel Living",
+ "name": "Lead Export Request",
+ "naming_rule": "Expression",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

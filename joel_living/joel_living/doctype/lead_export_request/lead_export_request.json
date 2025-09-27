@@ -12,8 +12,9 @@
   "requested_by",
   "requested_on",
   "section_break_hybq",
-  "lead_list",
-  "rejected_notes"
+  "rejected_notes",
+  "lead_export_list_html",
+  "lead_list"
  ],
  "fields": [
   {
@@ -62,12 +63,17 @@
   {
    "fieldname": "section_break_hybq",
    "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "lead_export_list_html",
+   "fieldtype": "HTML",
+   "label": "Lead Export List HTML"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-09-27 11:17:21.063807",
+ "modified": "2025-09-27 22:12:01.084791",
  "modified_by": "Administrator",
  "module": "Joel Living",
  "name": "Lead Export Request",

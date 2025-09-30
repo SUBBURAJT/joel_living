@@ -1,13 +1,13 @@
 frappe.listview_settings['Lead Import Request'] = {
     onload: function(listview) {
         listview.page.add_inner_button(
-            __('Download Lead Template'),
+            __('Sample Import Excel File'),
             function() {
                 window.open('/files/Lead Template.xlsx');
             }
         )
         .css({
-            "background-color": "#4CAF50",  
+            "background-color": "#000000ff",  
             "color": "white",               
             "font-weight": "bold",         
             "border-radius": "6px",        

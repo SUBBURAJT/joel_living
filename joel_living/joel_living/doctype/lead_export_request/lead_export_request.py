@@ -60,12 +60,12 @@ def approve_export_request(docname):
             rows.append({
                 "Lead ID": ld.get("name"),
                 "Lead Name": ld.get("lead_name"),
-                "Gender": ld.get("gender"),
+                "Gender": ld.get("custom_genders"),
                 "Budget Range": ld.get("custom_budget_range"),
                 "Budget Value (USD)": ld.get("custom_budget_usd"),
                 "Budget converted to AED": ld.get("custom_budget_aed"),
                 "Priority": ld.get("custom_priority_"),
-                "Lead Status": ld.get("lead_status"),
+                "Lead Status": ld.get("lead_status") or "Open",
                 "Project": ld.get("project"),
                 "Developer": ld.get("custom_developer"),
                 "Developer Representative": ld.get("custom_developer_representative"),
@@ -80,7 +80,8 @@ def approve_export_request(docname):
                 "Email": ld.get("email"),
                 "Mobile No": ld.get("mobile_no"),
                 "Secondary Phone": ld.get("phone_ext"),
-                "WhatsApp": ld.get("whatsapp")
+                "WhatsApp": ld.get("whatsapp"),
+                "custom_lead_category":"Fresh Lead",
             })
 
         # Generate Excel in memory

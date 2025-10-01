@@ -132,7 +132,7 @@ def approve_request(docname):
 
 def process_lead_import(docname):
     doc = frappe.get_doc("Lead Import Request", docname)
-
+    print("Processing lead import for:", doc.owner)
     added_count = 0
     failed_count = 0
     failed_rows = []
@@ -173,6 +173,8 @@ def process_lead_import(docname):
                     "country": row.get("Country"),
                     "state": row.get("State/Province"),
                     "city": row.get("City"),
+                    "custom_lead_category":"Fresh Lead",
+                    "lead_owner": doc.owner
                 })
                 lead.insert(ignore_permissions=True)
                 added_count += 1

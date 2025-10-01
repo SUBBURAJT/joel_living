@@ -3,13 +3,13 @@
 
 import frappe
 from frappe.model.document import Document
-
+import pandas as pd
+from io import BytesIO
+from datetime import datetime
 
 class LeadExportRequest(Document):
-	pass
+    pass
 
-import pandas as pd
-import os
 
 @frappe.whitelist()
 def create_export_request(leads):
@@ -21,11 +21,12 @@ def create_export_request(leads):
         "status": "Pending Approval",
         "requested_by": frappe.session.user,
         "requested_on": frappe.utils.now(),
-        "lead_list": frappe.as_json(leads)   # Or populate child table
+        "lead_list": frappe.as_json(leads)
     })
     doc.insert(ignore_permissions=True)
     frappe.db.commit()
     return doc.name
+
 
 @frappe.whitelist()
 def approve_export_request(docname):
@@ -34,56 +35,92 @@ def approve_export_request(docname):
     try:
         leads = frappe.parse_json(doc.lead_list)
 
+        # Fetch all required fields from Lead
         lead_docs = frappe.get_all(
             "Lead",
             filters={"name": ["in", leads]},
-            fields=["name", "lead_name", "mobile_no", "email_id","job_title", "custom_main_lead_source", "custom_project", "custom_lead_category", "country", "state", "city"]
+            fields=[
+                "name", "lead_name", "gender", "custom_budget_range", "custom_budget_usd",
+                "custom_budget_aed", "custom_priority_", "custom_lead_status as lead_status",
+                "custom_project as project", "custom_developer", "custom_developer_representative",
+                "custom_lead_stages", "custom_main_lead_source as main_lead_source",
+                "custom_secondary_lead_sources as secondary_lead_sources",
+                "custom_lead_type", "custom_lead_category as lead_category",
+                "country", "state", "city",
+                "email_id as email", "mobile_no", "phone_ext", "whatsapp_no as whatsapp"
+            ]
         )
 
         if not lead_docs:
             frappe.throw("No leads found to export")
 
-
-        # Clean rows for pandas
+        # Prepare rows
         rows = []
         for ld in lead_docs:
             rows.append({
                 "Lead ID": ld.get("name"),
                 "Lead Name": ld.get("lead_name"),
+                "Gender": ld.get("gender"),
+                "Budget Range": ld.get("custom_budget_range"),
+                "Budget Value (USD)": ld.get("custom_budget_usd"),
+                "Budget converted to AED": ld.get("custom_budget_aed"),
+                "Priority": ld.get("custom_priority_"),
+                "Lead Status": ld.get("lead_status"),
+                "Project": ld.get("project"),
+                "Developer": ld.get("custom_developer"),
+                "Developer Representative": ld.get("custom_developer_representative"),
+                "Lead Stages": ld.get("custom_lead_stages"),
+                "Main Lead Source": ld.get("main_lead_source"),
+                "Secondary Lead Sources": ld.get("secondary_lead_sources"),
+                "Lead Type": ld.get("custom_lead_type"),
+                "Lead Category": ld.get("lead_category"),
+                "Country": ld.get("country"),
+                "State/Province": ld.get("state"),
+                "City": ld.get("city"),
+                "Email": ld.get("email"),
                 "Mobile No": ld.get("mobile_no"),
-                "Email": ld.get("email_id"),
-                "Job Title": ld.get("job_title"),
-                "Main Lead Source": ld.get("custom_main_lead_source"),
-				"Project": ld.get("custom_project"),
-				"Lead category": ld.get("custom_lead_category"),
-				"Country": ld.get("country"),
-				"State/Province": ld.get("state"),
-				"City": ld.get("city"),
-    
-	
+                "Secondary Phone": ld.get("phone_ext"),
+                "WhatsApp": ld.get("whatsapp")
             })
 
-        # Convert to Excel
-        import pandas as pd, os
+        # Generate Excel in memory
         df = pd.DataFrame(rows)
-        filepath = os.path.join(
-            frappe.get_site_path("public", "files"),
-            f"exported_leads_{docname}.xlsx"
+        from io import BytesIO
+        from datetime import datetime
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        output = BytesIO()
+        df.to_excel(output, index=False)
+        output.seek(0)
+
+        file_name = f"exported_leads_{docname}_{timestamp}.xlsx"
+
+        # Check existing file attached
+        existing_file = frappe.get_all(
+            "File",
+            filters={
+                "attached_to_doctype": "Lead Export Request",
+                "attached_to_name": docname
+            },
+            limit=1
         )
-        df.to_excel(filepath, index=False)
 
-        # Attach file
-        file_doc = frappe.get_doc({
-            "doctype": "File",
-            "file_name": f"exported_leads_{docname}.xlsx",
-            "attached_to_doctype": "Lead Export Request",
-            "attached_to_name": docname,
-            "file_url": f"/files/exported_leads_{docname}.xlsx",
-            "is_private": 0
-        })
-        file_doc.save(ignore_permissions=True)
+        if existing_file:
+            file_doc = frappe.get_doc("File", existing_file[0].name)
+            file_doc.file_name = file_name
+            file_doc.content = output.getvalue()
+            file_doc.save(ignore_permissions=True)
+        else:
+            file_doc = frappe.get_doc({
+                "doctype": "File",
+                "file_name": file_name,
+                "attached_to_doctype": "Lead Export Request",
+                "attached_to_name": docname,
+                "is_private": 1,
+                "content": output.getvalue()
+            })
+            file_doc.insert(ignore_permissions=True)
 
-        # Update request
+        # Update Lead Export Request
         doc.export_file = file_doc.file_url
         doc.status = "Approved"
         doc.save(ignore_permissions=True)

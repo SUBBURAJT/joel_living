@@ -48,8 +48,50 @@ frappe.ui.form.on("Lead Import Request", {
 
 		let allowed_roles = ["Super Admin", "Admin"];
 
-        // check if session user has at least one role from allowed_roles
-        if (allowed_roles.some(role => frappe.user.has_role(role))) {
+		// check if session user has at least one role from allowed_roles
+		if (allowed_roles.some((role) => frappe.user.has_role(role))  && !frm.doc.__islocal) {
+			// Clear wrapper first
+			frm.fields_dict.download_button.$wrapper.empty();
+
+			// Wrapper div with padding
+			let wrapper_html = `<div style="padding:20px;">`;
+
+			// Show button if file exists
+			if (frm.doc.file) {
+				wrapper_html += `
+			<button class="btn btn-primary btn-sm m-1" id="download_file_btn">
+				<i class="fa fa-download"></i> Download Imported Excel File
+			</button>
+		`;
+			}
+
+			// Show button if failed_leads_file exists
+			if (frm.doc.failed_leads_file) {
+				wrapper_html += `
+			<button class="btn btn-danger btn-sm m-1" id="download_failed_file_btn">
+				<i class="fa fa-file-excel-o"></i> Download Failed Leads
+			</button>
+		`;
+			}
+
+			wrapper_html += `</div>`;
+			frm.fields_dict.download_button.$wrapper.html(wrapper_html);
+
+			// Attach click events
+			if (frm.doc.file) {
+				frm.fields_dict.download_button.$wrapper
+					.find("#download_file_btn")
+					.on("click", function () {
+						window.open(frm.doc.file, "_blank");
+					});
+			}
+			if (frm.doc.failed_leads_file) {
+				frm.fields_dict.download_button.$wrapper
+					.find("#download_failed_file_btn")
+					.on("click", function () {
+						window.open(frm.doc.failed_leads_file, "_blank");
+					});
+			}
 			// Action buttons if status is Pending
 			if (frm.doc.status === "Pending") {
 				// Approve button with confirmation

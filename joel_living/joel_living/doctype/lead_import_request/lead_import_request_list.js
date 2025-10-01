@@ -3,7 +3,7 @@ frappe.listview_settings['Lead Import Request'] = {
         listview.page.add_inner_button(
             __('Sample Import Excel File'),
             function() {
-                window.open('/files/Lead Template.xlsx');
+                window.open('/private/files/sample_import_lead.xlsx');
             }
         )
         .css({

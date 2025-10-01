@@ -108,6 +108,8 @@ import os
 import frappe
 import pandas as pd
 import os
+from datetime import datetime
+
 
 @frappe.whitelist()
 def approve_request(docname):
@@ -153,10 +155,20 @@ def process_lead_import(docname):
                     "middle_name": row.get("Middle Name"),
                     "last_name": row.get("Last Name"),
                     "custom_genders": row.get("Gender"),
-                    "custom_main_lead_source": row.get("Main Lead Source"),
-                    "job_title": row.get("Job Title"),
+                    "custom_budget_range":row.get("Budget Range"),
+                    "custom_budget_usd": row.get("Budget Value (USD)"),
+                    "custom_priority_": row.get("Priority"),
                     "custom_project": row.get("Project"),
+                    "custom_developer": row.get("Developer"),
+                    "custom_developer_representative": row.get("Developer Representative"),
+                    "custom_lead_stages": row.get("Lead Stage"),
+                    "custom_main_lead_source": row.get("Main Lead Source"),
+                    "custom_secondary_lead_sources": row.get("Secondary Lead Source"),
+                    "custom_lead_type": row.get("Lead Type"),
+                    "job_title": row.get("Job Title"),
                     "mobile_no": row.get("Mobile No"),
+                    "phone_ext":row.get("Secondary Phone"),
+                    "whatsapp_no": row.get("WhatsApp"),
                     "email_id": row.get("Email"),
                     "country": row.get("Country"),
                     "state": row.get("State/Province"),
@@ -177,19 +189,20 @@ def process_lead_import(docname):
         # Generate Excel for failed leads if any
         if failed_rows:
             failed_df = pd.DataFrame(failed_rows)
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
             failed_filepath = os.path.join(
-                frappe.get_site_path("public", "files"),
-                f"failed_leads_{docname}.xlsx"
+                frappe.get_site_path("private", "files"),
+                f"failed_leads_{docname}_{timestamp}.xlsx"
             )
             failed_df.to_excel(failed_filepath, index=False)
 
             # Attach file
             file_doc = frappe.get_doc({
                 "doctype": "File",
-                "file_name": f"failed_leads_{docname}.xlsx",
+                "file_name": f"failed_leads_{docname}_{timestamp}.xlsx",
                 "attached_to_doctype": "Lead Import Request",
                 "attached_to_name": docname,
-                "file_url": f"/files/failed_leads_{docname}.xlsx",
+                "file_url": f"/private/files/failed_leads_{docname}_{timestamp}.xlsx",
                 "is_private": 0
             })
             file_doc.save(ignore_permissions=True)

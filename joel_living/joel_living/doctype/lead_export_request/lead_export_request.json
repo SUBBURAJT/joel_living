@@ -8,6 +8,7 @@
  "field_order": [
   "requested_by",
   "export_file",
+  "download_button",
   "column_break_ceez",
   "requested_on",
   "status",
@@ -21,6 +22,7 @@
    "default": "Pending Approval",
    "fieldname": "status",
    "fieldtype": "Select",
+   "hidden": 1,
    "in_list_view": 1,
    "label": "Status",
    "options": "Pending Approval\nApproved\nRejected\nFailed",
@@ -44,6 +46,7 @@
   {
    "fieldname": "export_file",
    "fieldtype": "Attach",
+   "hidden": 1,
    "label": "Export File",
    "read_only": 1
   },
@@ -71,12 +74,17 @@
    "fieldname": "lead_export_list_html",
    "fieldtype": "HTML",
    "label": "Lead Export List HTML"
+  },
+  {
+   "fieldname": "download_button",
+   "fieldtype": "HTML",
+   "label": "Download Button"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-09-27 22:48:31.357957",
+ "modified": "2025-10-01 22:49:27.441667",
  "modified_by": "Administrator",
  "module": "Joel Living",
  "name": "Lead Export Request",

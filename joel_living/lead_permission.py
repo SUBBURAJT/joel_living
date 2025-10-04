@@ -19,7 +19,10 @@ def get_sales_agent_lead_conditions(user):
 
     # print(f"[DEBUG] User {user} is Sales Agent → applying restrictions")
 
-    conditions = [f"`tabLead`.lead_owner = {frappe.db.escape(user)}"]
+    conditions = [
+        f"`tabLead`.lead_owner = {frappe.db.escape(user)}",
+        "`tabLead`.lead_owner IS NULL OR `tabLead`.lead_owner = ''"
+    ]
 
     # Add unassigned leads based on Admin Settings
     try:
@@ -90,7 +93,7 @@ def has_sales_agent_lead_permission(doc, user):
         restrictions = getattr(admin_settings, "user_lead_restrictions", []) or []
         user_rows = [r for r in restrictions if r.user == user]
         if not user_rows:
-            return False
+            return True  # No restrictions → can claim any unassigned lead
 
         for r in user_rows:
             try:

@@ -5,20 +5,38 @@
  "doctype": "DocType",
  "engine": "InnoDB",
  "field_order": [
-  "number_of_days_lead_completed_in"
+  "number_of_days_lead_completed_in",
+  "section_break_zxlo",
+  "user_lead_restrictions_html",
+  "user_lead_restrictions"
  ],
  "fields": [
   {
    "fieldname": "number_of_days_lead_completed_in",
    "fieldtype": "Int",
    "label": "Number of Days Lead Completed In"
+  },
+  {
+   "fieldname": "section_break_zxlo",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "user_lead_restrictions",
+   "fieldtype": "Table",
+   "label": "User Lead Restrictions",
+   "options": "User Lead Restrictions"
+  },
+  {
+   "fieldname": "user_lead_restrictions_html",
+   "fieldtype": "HTML",
+   "label": "User Lead Restrictions HTML"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "issingle": 1,
  "links": [],
- "modified": "2025-09-27 12:11:09.036078",
+ "modified": "2025-10-02 20:29:04.068437",
  "modified_by": "Administrator",
  "module": "Joel Living",
  "name": "Admin Settings",

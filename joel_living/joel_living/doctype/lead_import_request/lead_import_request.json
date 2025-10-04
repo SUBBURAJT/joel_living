@@ -125,7 +125,7 @@
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-10-01 21:55:05.632636",
+ "modified": "2025-10-02 15:23:26.462379",
  "modified_by": "Administrator",
  "module": "Joel Living",
  "name": "Lead Import Request",
@@ -148,5 +148,8 @@
  "row_format": "Dynamic",
  "sort_field": "modified",
  "sort_order": "DESC",
- "states": []
+ "states": [],
+ "track_changes": 1,
+ "track_seen": 1,
+ "track_views": 1
 }

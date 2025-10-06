@@ -78,6 +78,7 @@ function handleToggle(e) {
 // });
 
 $(document).ready(function () {
+	
 	// Force private uploads for Sales Agent
 	if (frappe.session.user !== "Administrator") {
 		if (frappe.user_roles.includes("Sales Agent")) {
@@ -131,3 +132,6 @@ $(document).ready(function () {
 		});
 	});
 });
+
+
+

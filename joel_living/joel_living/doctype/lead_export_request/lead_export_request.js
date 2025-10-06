@@ -3,6 +3,9 @@
 
 frappe.ui.form.on("Lead Export Request", {
 	refresh: function (frm) {
+		if (frm.page.has_comment_area) {
+            frm.page.wrapper.find('.add-communication').hide();
+        }
 		let allowed_roles = ["Super Admin", "Admin"];
 
 		// Clear wrapper first
@@ -15,7 +18,7 @@ frappe.ui.form.on("Lead Export Request", {
 		if (frm.doc.export_file) {
 			wrapper_html += `
 			<button class="btn btn-primary btn-sm m-1" id="download_file_btn">
-				<i class="fa fa-download"></i> Download Approved Lead Excel File
+				<i class="fa fa-download"></i> Download File
 			</button>
 		`;
 		}

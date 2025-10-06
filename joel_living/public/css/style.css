@@ -17,3 +17,19 @@
 li.nav-item.dropdown-help.dropdown-mobile.d-none.d-lg-block {
     display: none !important;
 }
+
+
+
+
+
+
+/* Hide comment and like in list view */
+.list-row-activity .comment-count,
+.list-row-activity .list-row-like {
+    display: none !important;
+}
+
+
+.list-row-head .list-liked-by-me {
+    display: none !important;
+}

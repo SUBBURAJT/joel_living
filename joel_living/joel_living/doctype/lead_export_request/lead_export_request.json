@@ -1,5 +1,7 @@
 {
  "actions": [],
+ "allow_copy": 1,
+ "allow_import": 1,
  "allow_rename": 1,
  "autoname": "format:LD-EXP-{MM}-{YYYY}-{###}",
  "creation": "2025-09-27 10:59:50.319052",
@@ -53,6 +55,7 @@
   {
    "fieldname": "lead_list",
    "fieldtype": "Small Text",
+   "hidden": 1,
    "label": "Lead List",
    "read_only": 1
   },
@@ -82,9 +85,10 @@
   }
  ],
  "grid_page_length": 50,
+ "hide_toolbar": 1,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-10-02 15:23:43.926374",
+ "modified": "2025-10-06 23:00:48.981741",
  "modified_by": "Administrator",
  "module": "Joel Living",
  "name": "Lead Export Request",

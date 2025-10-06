@@ -102,3 +102,180 @@ def assign_leads_to_user(leads, lead_owner):
 
     frappe.db.commit()
 
+
+
+
+######### Lead Hide ##############
+
+
+@frappe.whitelist()
+def reject_hide(lead):
+    """Admin rejects hide"""
+    requester = frappe.db.get_value("Lead", lead, "custom_hide_requested_by")
+
+    try:
+        if requester:
+            frappe.enqueue(
+                create_notification,
+                queue='long',
+                timeout=600,
+                user=requester,
+                subject="Hide Request Rejected",
+                message=f"Your request to hide Lead {lead} was rejected by Admin.",
+                ref_doctype="Lead",
+                ref_name=lead,
+                send_email=True
+            )
+
+        # Only update after enqueue is successful
+        frappe.db.set_value("Lead", lead, {
+            "custom_hide_status": "Rejected",
+            "custom_hide_requested_by": None
+        })
+        frappe.db.commit()
+
+        return {"ok": True, "message": "Hide request rejected"}
+
+    except Exception as e:
+        frappe.log_error(f"Reject hide failed for {lead}: {str(e)}")
+        return {"ok": False, "message": "Rejection failed. Notification not sent."}
+    
+
+
+
+# --- Admin approve hide ---
+@frappe.whitelist()
+def approve_hide(lead):
+    """Admin approves hide"""
+    requester = frappe.db.get_value("Lead", lead, "custom_hide_requested_by")
+
+    try:
+        if requester:
+            frappe.enqueue(
+                create_notification,
+                queue='long',
+                timeout=600,
+                user=requester,
+                subject="Hide Request Approved",
+                message=f"Your request to hide Lead {lead} was approved and moved to Trash.",
+                ref_doctype="Lead",
+                ref_name=lead,
+                send_email=True
+            )
+
+        # Only update after enqueue is successful
+        frappe.db.set_value("Lead", lead, {
+            "custom_hide_status": "Trashed",
+            "custom_hide_requested_by": None
+        })
+        frappe.db.commit()
+
+        return {"ok": True, "message": "Lead marked as Trash"}
+
+    except Exception as e:
+        frappe.log_error(f"Approve hide failed for {lead}: {str(e)}")
+        return {"ok": False, "message": "Approval failed. Notification not sent."}
+
+
+@frappe.whitelist()
+def request_hide(lead):
+    """Sales Agent requests hide"""
+    current_user = frappe.session.user
+    admins = get_admin_users()
+
+    try:
+        # Notify Admin and Administrator first
+        for admin_user in admins:
+            frappe.enqueue(
+                create_notification,
+                queue='long',
+                timeout=600,
+                user=admin_user,
+                subject="Hide Request Submitted",
+                message=f"{frappe.utils.get_fullname(current_user)} requested to hide Lead {lead}",
+                ref_doctype="Lead",
+                ref_name=lead,
+                send_email=True
+            )
+
+        # Only after successful enqueue, update status
+        frappe.db.set_value("Lead", lead, {
+            "custom_hide_status": "Pending",
+            "custom_hide_requested_by": current_user
+        })
+        frappe.db.commit()
+
+        return {"ok": True, "message": "Hide request submitted"}
+
+    except Exception as e:
+        frappe.log_error(f"Hide request failed for {lead}: {str(e)}")
+        return {"ok": False, "message": "Failed to send notification. Try again later."}
+
+
+
+def get_admin_users():
+    """Return list of Admin and Administrator users"""
+   
+    admins = []
+    admins.append("Administrator")
+
+    role_holders = frappe.get_all(
+        "Has Role",
+        filters={"role": "Admin"},
+        fields=["parent"]
+    )
+
+    for r in role_holders:
+        if r.parent not in admins:
+            admins.append(r.parent)
+
+    return admins
+
+
+
+
+
+# --- Enqueued notification function ---
+def create_notification(user, subject, message, ref_doctype, ref_name, send_email=True):
+    """
+    Create in-app notification and optionally send email in background using enqueue
+    """
+    # In-app notification
+    notif = frappe.get_doc({
+        "doctype": "Notification Log",
+        "subject": subject,
+        "email_content": message,
+        "for_user": user,
+        "document_type": ref_doctype,
+        "document_name": ref_name
+    })
+    notif.insert(ignore_permissions=True)
+
+    # Email (optional)
+    if send_email:
+        user_email = frappe.db.get_value("User", user, "email")
+        send_email_safe(user_email, subject, message, ref_doctype, ref_name)
+
+    frappe.db.commit()
+
+
+def send_email_safe(user_email, subject, message, ref_doctype=None, ref_name=None):
+    """
+    Send email to user safely.
+    Logs only on failure, ignores success.
+    """
+    if not user_email or "@" not in user_email:
+        return
+
+    try:
+        frappe.sendmail(
+            recipients=[user_email],
+            subject=subject,
+            message=message,
+            reference_doctype=ref_doctype,
+            reference_name=ref_name,
+            now=True,
+            delayed=False
+        )
+    except Exception as e:
+        frappe.log_error(f"Email send failed to {user_email}: {str(e)}")

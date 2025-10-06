@@ -121,6 +121,7 @@ app_include_css = "/assets/joel_living/css/style.css"
 # -----------
 permission_query_conditions = {
     "Lead": "joel_living.lead_permission.get_sales_agent_lead_conditions",
+    "Message Inbox": "joel_living.joel_living.doctype.system_message.system_message.system_inbox_permission"
 }
 
 has_permission = {

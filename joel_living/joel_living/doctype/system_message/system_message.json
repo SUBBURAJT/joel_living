@@ -1,0 +1,71 @@
+{
+ "actions": [],
+ "creation": "2025-10-06 20:25:33.716020",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "recipients",
+  "send_to_all_users",
+  "subject",
+  "message",
+  "select_user"
+ ],
+ "fields": [
+  {
+   "fieldname": "recipients",
+   "fieldtype": "Table MultiSelect",
+   "label": "Recipients",
+   "options": "Multiselect User"
+  },
+  {
+   "default": "0",
+   "fieldname": "send_to_all_users",
+   "fieldtype": "Check",
+   "label": "Send To All Users"
+  },
+  {
+   "fieldname": "subject",
+   "fieldtype": "Data",
+   "label": "Subject"
+  },
+  {
+   "fieldname": "message",
+   "fieldtype": "Text",
+   "label": "Message"
+  },
+  {
+   "fieldname": "select_user",
+   "fieldtype": "Link",
+   "hidden": 1,
+   "label": "Select User",
+   "options": "User"
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2025-10-06 20:25:33.716020",
+ "modified_by": "Administrator",
+ "module": "Joel Living",
+ "name": "System Message",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "title_field": "subject"
+}

@@ -119,15 +119,14 @@ app_include_css = "/assets/joel_living/css/style.css"
 
 # Permissions
 # -----------
-# Permissions evaluated in scripted ways
+permission_query_conditions = {
+    "Lead": "joel_living.lead_permission.get_sales_agent_lead_conditions",
+    "Message Inbox": "joel_living.joel_living.doctype.system_message.system_message.system_inbox_permission"
+}
 
-# permission_query_conditions = {
-# 	"Event": "frappe.desk.doctype.event.event.get_permission_query_conditions",
-# }
-#
-# has_permission = {
-# 	"Event": "frappe.desk.doctype.event.event.has_permission",
-# }
+has_permission = {
+    "Lead": "joel_living.lead_permission.has_sales_agent_lead_permission",
+}
 
 # DocType Class
 # ---------------
@@ -143,8 +142,10 @@ app_include_css = "/assets/joel_living/css/style.css"
 
 doc_events = {
 	"Lead": {
-        "after_insert": "joel_living.custom_lead.after_insert_lead",
-        "on_update": "joel_living.custom_lead.on_update_lead"
+        # "after_insert": "joel_living.custom_lead.after_insert_lead",
+        # "on_update": "joel_living.custom_lead.on_update_lead",
+        "before_save": "joel_living.lead_permission.allow_write_for_lead_owner"
+
     }
 }
 

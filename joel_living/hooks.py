@@ -142,9 +142,10 @@ has_permission = {
 
 doc_events = {
 	"Lead": {
+        "before_load": "joel_living.lead_permission.restrict_lead_flag"
         # "after_insert": "joel_living.custom_lead.after_insert_lead",
         # "on_update": "joel_living.custom_lead.on_update_lead",
-        "before_save": "joel_living.lead_permission.allow_write_for_lead_owner"
+        # "before_save": "joel_living.lead_permission.allow_write_for_lead_owner"
 
     }
 }

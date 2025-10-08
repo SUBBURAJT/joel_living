@@ -8,7 +8,12 @@
   "number_of_days_lead_completed_in",
   "section_break_zxlo",
   "user_lead_restrictions_html",
-  "user_lead_restrictions"
+  "user_lead_restrictions",
+  "email_configuration_section",
+  "email_account",
+  "to_mail_id",
+  "column_break_cpld",
+  "cc_mail_ids"
  ],
  "fields": [
   {
@@ -30,13 +35,41 @@
    "fieldname": "user_lead_restrictions_html",
    "fieldtype": "HTML",
    "label": "User Lead Restrictions HTML"
+  },
+  {
+   "fieldname": "email_configuration_section",
+   "fieldtype": "Section Break",
+   "label": "Email Configuration"
+  },
+  {
+   "fieldname": "email_account",
+   "fieldtype": "Link",
+   "label": "Email Account",
+   "options": "Email Account"
+  },
+  {
+   "description": "It must use a single email ID for sending mails during import and export requests.",
+   "fieldname": "to_mail_id",
+   "fieldtype": "Data",
+   "label": "To Mail ID",
+   "options": "Email"
+  },
+  {
+   "fieldname": "column_break_cpld",
+   "fieldtype": "Column Break"
+  },
+  {
+   "description": "We can mention multiple email IDs separated by commas to add them in CC.",
+   "fieldname": "cc_mail_ids",
+   "fieldtype": "Small Text",
+   "label": "CC Mail Id's"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "issingle": 1,
  "links": [],
- "modified": "2025-10-02 20:29:04.068437",
+ "modified": "2025-10-08 20:39:48.948316",
  "modified_by": "Administrator",
  "module": "Joel Living",
  "name": "Admin Settings",

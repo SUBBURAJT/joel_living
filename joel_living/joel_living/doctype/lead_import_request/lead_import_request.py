@@ -1,114 +1,110 @@
 # Copyright (c) 2025, Subburaj and contributors
 # For license information, please see license.txt
 
-# import frappe
+import frappe
+from frappe.utils import get_url, format_datetime
 from frappe.model.document import Document
-
-
-class LeadImportRequest(Document):
-	pass
-
-
-
-import frappe
-import pandas as pd
-import os
-
-# @frappe.whitelist()
-# def approve_request(docname):
-#     doc = frappe.get_doc("Lead Import Request", docname)
-
-#     added_count = 0
-#     failed_count = 0
-#     failed_rows = []
-#     failed_reasons_set = set()
-
-#     try:
-#         # Get file path
-#         file_doc = frappe.get_doc("File", {"file_url": doc.file})
-#         filepath = file_doc.get_full_path()
-
-#         # Read Excel
-#         df = pd.read_excel(filepath)
-
-#         # Import leads
-#         for idx, row in df.iterrows():
-#             try:
-#                 lead = frappe.get_doc({
-#                     "doctype": "Lead",
-#                     "lead_name": row.get("First Name"),
-#                     "source": row.get("Source"),
-#                     "mobile_no": row.get("Mobile No"),
-#                 })
-#                 lead.insert(ignore_permissions=True)
-#                 added_count += 1
-#             except Exception as e:
-#                 failed_count += 1
-#                 failed_rows.append(row)
-#                 failed_reasons_set.add(str(e))
-
-#         # Save counts and reasons
-#         doc.success_count = added_count
-#         doc.failed_count = failed_count
-#         doc.failed_reasons = ", ".join(failed_reasons_set)
-
-#         # Generate Excel for failed leads if any
-#         if failed_rows:
-#             failed_df = pd.DataFrame(failed_rows)
-#             failed_filepath = os.path.join(frappe.get_site_path("public", "files"), f"failed_leads_{docname}.xlsx")
-#             failed_df.to_excel(failed_filepath, index=False)
-
-#             # Attach file using File doctype
-#             file_doc = frappe.get_doc({
-#                 "doctype": "File",
-#                 "file_name": f"failed_leads_{docname}.xlsx",
-#                 "attached_to_doctype": "Lead Import Request",
-#                 "attached_to_name": docname,
-#                 "content": None,
-#                 "file_url": f"/files/failed_leads_{docname}.xlsx",
-#                 "is_private": 0
-#             })
-#             file_doc.save(ignore_permissions=True)
-#             doc.failed_leads_file = file_doc.file_url
-
-#         # Update status
-#         if failed_count == 0:
-#             doc.status = "Approved"
-#         elif added_count > 0:
-#             doc.status = "Partially Approved"
-#         else:
-#             doc.status = "Failed"
-
-#         doc.save(ignore_permissions=True)
-#         frappe.db.commit()
-
-#         frappe.msgprint(f"Leads import finished: {added_count} added, {failed_count} failed.")
-
-#         return {
-#             "added": added_count,
-#             "failed": failed_count,
-#             "failed_reasons": doc.failed_reasons,
-#             "failed_file": doc.failed_leads_file
-#         }
-
-#     except Exception as e:
-#         doc.status = "Failed"
-#         doc.save(ignore_permissions=True)
-#         frappe.db.commit()
-#         frappe.msgprint(f"Import Failed: {e}")
-#         return {
-#             "added": added_count,
-#             "failed": len(df),
-#             "failed_reasons": str(e),
-#             "failed_file": None
-#         }
-
-
-
-import frappe
+from frappe.utils.background_jobs import enqueue
+from joel_living.email import send_custom_email
 import pandas as pd
 import os
 from datetime import datetime
+
+
+class LeadImportRequest(Document):
+    def after_insert(self):
+        """Enqueue email notification and system notification after lead import request is created."""
+        enqueue(self.send_notifications, queue='short', job_name=f"lead_import_notify_{self.name}")
+
+    def send_notifications(self):
+        """Send both email and system notification."""
+        admin_settings = frappe.get_single("Admin Settings")
+
+        requester = frappe.utils.get_fullname(self.owner) or self.owner
+        doc_url = f"{get_url()}/app/lead-import-request/{self.name}"
+        subject = f"New Lead Import Request from {requester}"
+
+        # ----- Send Email -----
+        if admin_settings.email_account and admin_settings.to_mail_id:
+            cc_emails = []
+            if admin_settings.cc_mail_ids:
+                cc_emails = [e.strip() for e in admin_settings.cc_mail_ids.replace("\n", ",").split(",") if e.strip()]
+
+            message = f"""
+            <div style="font-family: 'Segoe UI', Arial, sans-serif; background-color: #f7f9fc; padding: 25px;">
+                <div style="max-width: 600px; margin: auto; background-color: #fff; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); padding: 25px;">
+                    <h2 style="color: #2c3e50; text-align:center; border-bottom: 2px solid #3498db; padding-bottom: 10px;">
+                        🆕 New Lead Import Request
+                    </h2>
+
+                    <p>A new <strong>Lead Import Request</strong> has been raised by 
+                        <b>{requester}</b>.
+                    </p>
+
+                    <div style="text-align:center; margin: 25px 0;">
+                        <a href="{doc_url}" style="
+                            background-color: #3498db;
+                            color: white;
+                            text-decoration: none;
+                            padding: 12px 22px;
+                            border-radius: 5px;
+                            font-weight: 500;
+                            font-size: 15px;
+                            display: inline-block;">
+                            🔍 View Lead Import Request
+                        </a>
+                    </div>
+
+                    <div style="background-color: #f9fafc; padding: 12px 18px; border-left: 3px solid #3498db; font-size: 14px; color: #555;">
+                        <p><strong>Request ID:</strong> {self.name}</p>
+                        <p><strong>Status:</strong> {self.status or "Draft"}</p>
+                        <p><strong>Submitted By:</strong> {requester}</p>
+                        <p><strong>Submitted On:</strong> {format_datetime(self.creation, "dd-MMM-yyyy HH:mm")}</p> 
+                    </div>
+
+                    <p style="margin-top:25px; color:#95a5a6; font-size:13px; text-align:center;">
+                        This is an automated notification from your system.
+                    </p>
+                </div>
+            </div>
+            """
+
+            send_custom_email(
+                to=admin_settings.to_mail_id,
+                cc=cc_emails,
+                subject=subject,
+                message=message
+            )
+        else:
+            frappe.log_error("⚠️ Admin Settings missing Email Account or To Mail ID.", "Lead Import Notification Skipped")
+
+        # ----- Send System Notification -----
+        try:
+            frappe.publish_realtime(
+                event="msgprint",
+                message=f"🆕 New Lead Import Request: {self.name} submitted by {requester}.",
+                user=admin_settings.to_mail_id
+            )
+
+            # Only create Notification Log if user exists
+            if frappe.get_value("User", admin_settings.to_mail_id):
+                frappe.get_doc({
+                    "doctype": "Notification Log",
+                    "document_type": self.doctype,
+                    "document_name": self.name,
+                    "subject": subject,
+                    "from_user": self.owner,
+                    "for_user": admin_settings.to_mail_id,
+                    "type": "Alert"
+                }).insert(ignore_permissions=True)
+
+        except Exception as e:
+            # Log the error but do not block the job
+            frappe.log_error(e, "Lead Import Request Notification Skipped")
+
+
+
+
 
 
 @frappe.whitelist()
@@ -137,6 +133,7 @@ def process_lead_import(docname):
     failed_count = 0
     failed_rows = []
     failed_reasons_set = set()
+    owner_email = doc.owner
 
     try:
         # Get file path
@@ -227,6 +224,18 @@ def process_lead_import(docname):
             user=frappe.session.user
         )
 
+        # Enqueue notification
+        enqueue(
+            "joel_living.joel_living.doctype.lead_import_request.lead_import_request.send_lead_import_notification",
+            queue="short",
+            timeout=300,
+            docname=docname,
+            status=doc.status,
+            added=added_count,
+            failed=failed_count
+        )
+
+
     except Exception as e:
         doc.status = "Failed"
         doc.save(ignore_permissions=True)
@@ -237,19 +246,16 @@ def process_lead_import(docname):
             {"docname": docname, "status": "Failed", "error": str(e)},
             user=frappe.session.user
         )
-
-
-
-@frappe.whitelist()
-def reject_request(docname):
-    doc = frappe.get_doc("Lead Import Request", docname)
-    doc.status = "Rejected"
-    doc.save(ignore_permissions=True)
-    frappe.db.commit()
-    frappe.msgprint("Request Rejected")
-
-
-
+        # Enqueue failure notification
+        enqueue(
+            "joel_living.joel_living.doctype.lead_import_request.lead_import_request.send_lead_import_notification",
+            queue="short",
+            timeout=300,
+            docname=docname,
+            status="Failed",
+            error=str(e)
+        )
+    
 from openpyxl import load_workbook
 
 @frappe.whitelist()
@@ -319,6 +325,16 @@ def reject_request(docname, reason=None):
     frappe.db.commit()
     frappe.msgprint("Request Rejected")
 
+    # Send notifications
+    # Enqueue notification in background
+    enqueue(
+        "joel_living.joel_living.doctype.lead_import_request.lead_import_request.send_lead_import_notification",
+        queue="short",
+        timeout=300,
+        docname=docname,
+        status="Rejected"
+    )
+
 
 @frappe.whitelist()
 def move_to_pending(docname):
@@ -328,3 +344,113 @@ def move_to_pending(docname):
     doc.save(ignore_permissions=True)
     frappe.db.commit()
     frappe.msgprint("Lead Import Request is now Pending.")
+
+
+
+
+
+# -------------------------------
+# Common Notification Function
+# -------------------------------
+def send_lead_import_notification(docname, status, added=0, failed=0, error=None):
+    """Send email + system notification for Lead Import Request"""
+    try:
+        doc = frappe.get_doc("Lead Import Request", docname)
+        admin_settings = frappe.get_single("Admin Settings")
+
+        if not admin_settings.email_account or not doc.owner:
+            frappe.log_error(f"Skipping notification: missing email account or owner for {docname}", "Lead Import Notification")
+            return
+
+        owner_email = doc.owner
+        requester = frappe.utils.get_fullname(owner_email) or owner_email
+
+        # Validate owner email
+        if "@" not in owner_email:
+            frappe.log_error(f"Invalid owner email: {owner_email}", "Lead Import Notification Skipped")
+            return
+
+        # Prepare CC
+        cc_emails = []
+        if admin_settings.cc_mail_ids:
+            cc_emails = [e.strip() for e in admin_settings.cc_mail_ids.replace("\n", ",").split(",") if e.strip()]
+
+        doc_url = f"{get_url()}/app/lead-import-request/{doc.name}"
+        subject = f"Lead Import Request {status}: {doc.name}"
+
+        # Email message
+        message = f"""
+        <div style="font-family: 'Segoe UI', Arial, sans-serif; background-color: #f7f9fc; padding: 25px;">
+            <div style="max-width: 600px; margin: auto; background-color: #fff; border-radius: 8px; 
+                        box-shadow: 0 2px 8px rgba(0,0,0,0.08); padding: 25px;">
+                <h2 style="color: #2c3e50; text-align:center; border-bottom: 2px solid #3498db; padding-bottom: 10px;">
+                    Lead Import Request {status}
+                </h2>
+                <p style="font-size: 15px; color: #34495e;">
+                    Hello <b style="color:#2c3e50;">{requester}</b>, your Lead Import Request <b>{doc.name}</b> has <b>{status}</b>.
+                </p>
+        """
+
+        if status in ["Approved", "Partially Approved"]:
+            message += f"""
+                <div style="background-color: #f9fafc; padding: 15px; border-left: 4px solid #3498db; font-size: 14px; color: #555;">
+                    <p><strong>Status:</strong> {status}</p>
+                    <p><strong>Successfully Added:</strong> {added}</p>
+                    <p><strong>Failed:</strong> {failed}</p>
+                    <p><strong>Submitted On:</strong> {format_datetime(doc.creation, 'dd-MMM-yyyy HH:mm')}</p>
+                </div>
+            """
+        elif status == "Rejected":
+            message += f"""
+                <div style="background-color: #f9fafc; padding: 15px; border-left: 4px solid #e74c3c; font-size: 14px; color: #555;">
+                    <p><strong>Status:</strong> {status}</p>
+                    <p><strong>Reason:</strong> {doc.rejected_reason}</p>
+                    <p><strong>Submitted On:</strong> {format_datetime(doc.creation, 'dd-MMM-yyyy HH:mm')}</p>
+                </div>
+            """
+        elif status == "Failed" and error:
+            message += f'<p style="color:#e74c3c;"><strong>Error:</strong> {error}</p>'
+
+        message += f"""
+                <div style="text-align:center; margin: 25px 0;">
+                    <a href="{doc_url}" style="
+                        background-color: #3498db;
+                        color: white;
+                        text-decoration: none;
+                        padding: 12px 22px;
+                        border-radius: 5px;
+                        font-weight: 500;
+                        font-size: 15px;
+                        display: inline-block;">
+                        🔍 View Request
+                    </a>
+                </div>
+                <p style="margin-top:25px; color:#95a5a6; font-size:13px; text-align:center;">
+                    This is an automated notification from your system.
+                </p>
+            </div>
+        </div>
+        """
+
+        # Send email
+        send_custom_email(to=owner_email, cc=cc_emails, subject=subject, message=message)
+
+        # Send system notification
+        description = f"Lead Import Request {doc.name} has been {status}."
+        if status == "Rejected":
+            description += f"\nReason: {doc.rejected_reason}"
+        if status == "Failed" and error:
+            description += f"\nError: {error}"
+
+        frappe.get_doc({
+            "doctype": "Notification Log",
+            "subject": f"Lead Import Request {status}: {doc.name}",
+            "type": "Alert",
+            "document_type": "Lead Import Request",
+            "document_name": doc.name,
+            "for_user": owner_email,
+            "description": description
+        }).insert(ignore_permissions=True)
+
+    except Exception as e:
+        frappe.log_error(f"Failed to send lead import notification: {str(e)}", "Lead Import Notification")

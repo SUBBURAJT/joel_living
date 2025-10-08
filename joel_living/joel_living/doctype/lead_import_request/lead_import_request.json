@@ -123,9 +123,10 @@
   }
  ],
  "grid_page_length": 50,
+ "hide_toolbar": 1,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-10-02 15:23:26.462379",
+ "modified": "2025-10-08 22:21:01.199965",
  "modified_by": "Administrator",
  "module": "Joel Living",
  "name": "Lead Import Request",

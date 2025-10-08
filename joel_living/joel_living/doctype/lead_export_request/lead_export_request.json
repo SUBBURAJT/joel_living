@@ -36,7 +36,8 @@
    "in_list_view": 1,
    "label": "Requested By",
    "options": "User",
-   "read_only": 1
+   "read_only": 1,
+   "reqd": 1
   },
   {
    "fieldname": "requested_on",
@@ -88,7 +89,7 @@
  "hide_toolbar": 1,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-10-06 23:00:48.981741",
+ "modified": "2025-10-06 23:22:02.513454",
  "modified_by": "Administrator",
  "module": "Joel Living",
  "name": "Lead Export Request",

@@ -23,9 +23,10 @@ class LeadImportRequest(Document):
         requester = frappe.utils.get_fullname(self.owner) or self.owner
         doc_url = f"{get_url()}/app/lead-import-request/{self.name}"
         subject = f"New Lead Import Request from {requester}"
-
+        should_send_email = frappe.db.get_single_value("Admin Settings", "send_mail_on_import_and_export_request")
+        
         # ----- Send Email -----
-        if admin_settings.email_account and admin_settings.to_mail_id:
+        if admin_settings.email_account and admin_settings.to_mail_id and should_send_email:
             cc_emails = []
             if admin_settings.cc_mail_ids:
                 cc_emails = [e.strip() for e in admin_settings.cc_mail_ids.replace("\n", ",").split(",") if e.strip()]
@@ -431,9 +432,10 @@ def send_lead_import_notification(docname, status, added=0, failed=0, error=None
             </div>
         </div>
         """
-
+        should_send_email = frappe.db.get_single_value("Admin Settings", "send_mail_on_import_and_export_request")
+        if should_send_email:
         # Send email
-        send_custom_email(to=owner_email, cc=cc_emails, subject=subject, message=message)
+            send_custom_email(to=owner_email, cc=cc_emails, subject=subject, message=message)
 
         # Send system notification
         description = f"Lead Import Request {doc.name} has been {status}."

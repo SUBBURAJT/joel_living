@@ -142,34 +142,44 @@ has_permission = {
 
 doc_events = {
 	"Lead": {
-        "before_load": "joel_living.lead_permission.restrict_lead_flag"
-        # "after_insert": "joel_living.custom_lead.after_insert_lead",
-        # "on_update": "joel_living.custom_lead.on_update_lead",
-        # "before_save": "joel_living.lead_permission.allow_write_for_lead_owner"
-
+        "before_save": "joel_living.lead_permission.on_lead_assignment_change"
+   
     }
 }
 
 # Scheduled Tasks
 # ---------------
 
-# scheduler_events = {
-# 	"all": [
-# 		"joel_living.tasks.all"
-# 	],
-# 	"daily": [
-# 		"joel_living.tasks.daily"
-# 	],
-# 	"hourly": [
-# 		"joel_living.tasks.hourly"
-# 	],
-# 	"weekly": [
-# 		"joel_living.tasks.weekly"
-# 	],
-# 	"monthly": [
-# 		"joel_living.tasks.monthly"
-# 	],
-# }
+scheduler_events = {
+
+    "daily": [
+        # This job finds ALL overdue leads and starts the process.
+        "joel_living.lead_permission.unassign_overdue_leads",
+
+        # This NEW job finds ONLY re-approved leads that have expired their 3-day deadline.
+        "joel_living.lead_permission.dispatch_expired_reapproved_leads" 
+    ],
+    "cron": {
+        "*/15 * * * *": [
+            "joel_living.lead_permission.unassign_expired_open_leads" # every 15 minutes
+        ]
+    }
+	# "all": [
+	# 	"joel_living.tasks.all"
+	# ],
+	# "daily": [
+	# 	"joel_living.tasks.daily"
+	# ],
+	# "hourly": [
+	# 	"joel_living.tasks.hourly"
+	# ],
+	# "weekly": [
+	# 	"joel_living.tasks.weekly"
+	# ],
+	# "monthly": [
+	# 	"joel_living.tasks.monthly"
+	# ],
+}
 
 # Testing
 # -------

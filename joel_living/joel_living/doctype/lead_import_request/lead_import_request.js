@@ -3,7 +3,6 @@
 
 frappe.ui.form.on("Lead Import Request", {
 	refresh: function (frm) {
-		// Show preview if file exists
 		// Show main Excel preview if file exists
 		frm.fields_dict.html_lead.$wrapper.empty();
 		frm.fields_dict.failed_lead_html.$wrapper.empty();

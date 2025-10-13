@@ -4,7 +4,6 @@ frappe.listview_settings['Lead Export Request'] = {
     button: {
         show: function (doc) {
             // console.log("Export file URL:", doc.export_file, "Status:", doc.status);
-            // Show the button only if Approved and file exists
             return doc.status === "Approved" && !!doc.export_file;
         },
         get_label: function () {

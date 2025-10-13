@@ -6,12 +6,18 @@
  "engine": "InnoDB",
  "field_order": [
   "number_of_days_lead_completed_in",
+  "re_approval_deadline_days",
+  "column_break_wlzx",
+  "assignment_timeout_minutes",
+  "send_email_on_extension_request",
+  "send_mail_on_rejection",
   "section_break_zxlo",
   "user_lead_restrictions_html",
   "user_lead_restrictions",
   "email_configuration_section",
   "email_account",
   "to_mail_id",
+  "send_mail_on_import_and_export_request",
   "column_break_cpld",
   "cc_mail_ids"
  ],
@@ -64,13 +70,46 @@
    "fieldname": "cc_mail_ids",
    "fieldtype": "Small Text",
    "label": "CC Mail Id's"
+  },
+  {
+   "description": "In minutes",
+   "fieldname": "assignment_timeout_minutes",
+   "fieldtype": "Int",
+   "label": "Assignment Timeout Minutes"
+  },
+  {
+   "fieldname": "column_break_wlzx",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "re_approval_deadline_days",
+   "fieldtype": "Int",
+   "label": "Re approval Deadline (Days)"
+  },
+  {
+   "default": "0",
+   "fieldname": "send_mail_on_rejection",
+   "fieldtype": "Check",
+   "label": "Send Mail On Extension Rejection"
+  },
+  {
+   "default": "0",
+   "fieldname": "send_email_on_extension_request",
+   "fieldtype": "Check",
+   "label": "Send Email on Extension Request"
+  },
+  {
+   "default": "0",
+   "fieldname": "send_mail_on_import_and_export_request",
+   "fieldtype": "Check",
+   "label": "Send Mail on Import and Export Request"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "issingle": 1,
  "links": [],
- "modified": "2025-10-08 23:19:27.516792",
+ "modified": "2025-10-13 22:00:02.131709",
  "modified_by": "Administrator",
  "module": "Joel Living",
  "name": "Admin Settings",
@@ -90,5 +129,7 @@
  "row_format": "Dynamic",
  "sort_field": "modified",
  "sort_order": "DESC",
- "states": []
+ "states": [],
+ "track_changes": 1,
+ "track_seen": 1
 }

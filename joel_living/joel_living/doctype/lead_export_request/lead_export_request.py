@@ -84,18 +84,19 @@ class LeadExportRequest(Document):
             </div>
         </div>
         """
-
-        # Send email
-        try:
-            send_custom_email(
-                to=admin_settings.to_mail_id,
-                cc=cc_emails,
-                subject=subject,
-                message=message
-            )
-            frappe.log_error(f"Lead Export Request notification sent to {owner_email}", "Lead Export Notification")
-        except Exception as e:
-            frappe.log_error(f"Failed to send Lead Export Request email: {str(e)}", "Lead Export Notification Error")
+        should_send_email = frappe.db.get_single_value("Admin Settings", "send_mail_on_import_and_export_request")
+        if should_send_email:
+            # Send email
+            try:
+                send_custom_email(
+                    to=admin_settings.to_mail_id,
+                    cc=cc_emails,
+                    subject=subject,
+                    message=message
+                )
+                # frappe.log_error(f"Lead Export Request notification sent to {owner_email}", "Lead Export Notification")
+            except Exception as e:
+                frappe.log_error(f"Failed to send Lead Export Request email: {str(e)}", "Lead Export Notification Error")
 
         # Send system notification
         try:
@@ -320,9 +321,10 @@ def send_export_notification(docname, status, error=None):
             </div>
         </div>
         """
-
-        # Send email
-        send_custom_email(to=owner_email, cc=cc_emails, subject=subject, message=message)
+        should_send_email = frappe.db.get_single_value("Admin Settings", "send_mail_on_import_and_export_request")
+        if should_send_email:
+            # Send email
+            send_custom_email(to=owner_email, cc=cc_emails, subject=subject, message=message)
 
         # Send system notification
         try:

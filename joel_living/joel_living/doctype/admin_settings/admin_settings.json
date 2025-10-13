@@ -34,6 +34,7 @@
   {
    "fieldname": "user_lead_restrictions",
    "fieldtype": "Table",
+   "hidden": 1,
    "label": "User Lead Restrictions",
    "options": "User Lead Restrictions"
   },

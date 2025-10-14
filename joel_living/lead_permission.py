@@ -560,7 +560,7 @@ def create_extension_request_for_lead(lead_name, owner):
 
                 <div style="padding: 24px; text-align: left; color: #3f3f46;">
                     <p style="margin-bottom: 20px; font-size: 16px;">
-                        A lead assigned to <b>{owner}</b> is overdue and requires your approval for a 3-day extension.
+                        A lead assigned to <b>{owner}</b> is overdue and requires your approval for extension.
                     </p>
 
                     <div style="border-top: 1px solid #e4e4e7; border-bottom: 1px solid #e4e4e7; padding: 16px 0;">

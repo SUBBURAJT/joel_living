@@ -142,7 +142,8 @@ has_permission = {
 
 doc_events = {
 	"Lead": {
-        "before_save": "joel_living.lead_permission.on_lead_assignment_change"
+        "before_save": "joel_living.lead_permission.on_lead_assignment_change",
+        "after_insert": "joel_living.lead_permission.after_insert_lead_assignment"
    
     }
 }

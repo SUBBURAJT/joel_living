@@ -56,7 +56,8 @@
   "reason_for_late_screening",
   "column_break_smdm",
   "screening_date_and_time",
-  "screenshot_of_final_screening"
+  "screenshot_of_final_screening",
+  "lead_id"
  ],
  "fields": [
   {
@@ -317,12 +318,19 @@
    "fieldname": "screenshot_of_final_screening",
    "fieldtype": "Attach",
    "label": "Screenshot of Final Screening"
+  },
+  {
+   "fieldname": "lead_id",
+   "fieldtype": "Link",
+   "label": "Lead ID",
+   "options": "Lead",
+   "read_only": 1
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-10-15 21:05:57.319250",
+ "modified": "2025-10-16 23:23:18.046605",
  "modified_by": "Administrator",
  "module": "Joel Living",
  "name": "Sales Completion Form",

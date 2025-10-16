@@ -279,3 +279,17 @@ def send_email_safe(user_email, subject, message, ref_doctype=None, ref_name=Non
         )
     except Exception as e:
         frappe.log_error(f"Email send failed to {user_email}: {str(e)}")
+
+
+
+
+
+import frappe
+
+@frappe.whitelist()
+def check_for_existing_sales_form(lead_name):
+    """
+    Checks if a 'Sales Completion Form' for a given Lead already exists.
+    Returns the name of the form if it exists, otherwise returns None.
+    """
+    return frappe.db.exists("Sales Completion Form", {"lead_id": lead_name})

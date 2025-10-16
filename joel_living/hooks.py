@@ -28,7 +28,10 @@ app_license = "mit"
 # app_include_css = "/assets/joel_living/css/joel_living.css"
 # app_include_js = "/assets/joel_living/js/joel_living.js"
 
-app_include_js = "/assets/joel_living/js/toggle.js"
+app_include_js = [
+    "/assets/joel_living/js/toggle.js",
+    "/assets/joel_living/js/workflow.js"
+]
 app_include_css = "/assets/joel_living/css/style.css"
 
 

@@ -1,6 +1,7 @@
 {
  "actions": [],
  "allow_rename": 1,
+ "autoname": "format:SCF-{MM}-{YYYY}-{###}",
  "creation": "2025-10-15 21:05:57.319250",
  "doctype": "DocType",
  "engine": "InnoDB",
@@ -63,6 +64,7 @@
   {
    "fieldname": "type_register",
    "fieldtype": "Select",
+   "in_list_view": 1,
    "label": "Type Register",
    "options": "EOI\nCompleted Sale"
   },
@@ -82,11 +84,13 @@
   {
    "fieldname": "first_name",
    "fieldtype": "Data",
+   "in_list_view": 1,
    "label": "First Name"
   },
   {
    "fieldname": "passport_number",
    "fieldtype": "Data",
+   "in_list_view": 1,
    "label": "Passport Number"
   },
   {
@@ -151,11 +155,13 @@
   {
    "fieldname": "date_of_birth",
    "fieldtype": "Date",
+   "in_list_view": 1,
    "label": "Date of Birth"
   },
   {
    "fieldname": "email",
    "fieldtype": "Data",
+   "in_list_view": 1,
    "label": "Email"
   },
   {
@@ -322,6 +328,7 @@
   {
    "fieldname": "lead_id",
    "fieldtype": "Link",
+   "in_list_view": 1,
    "label": "Lead ID",
    "options": "Lead",
    "read_only": 1
@@ -330,10 +337,11 @@
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-10-16 23:23:18.046605",
+ "modified": "2025-10-22 21:51:28.616357",
  "modified_by": "Administrator",
  "module": "Joel Living",
  "name": "Sales Completion Form",
+ "naming_rule": "Expression",
  "owner": "Administrator",
  "permissions": [
   {

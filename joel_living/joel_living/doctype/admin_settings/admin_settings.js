@@ -179,8 +179,51 @@ frappe.ui.form.on("Admin Settings", {
     },
     refresh(frm) {
         render_user_restrictions(frm);
-    }
+                add_live_integer_validations(frm);
+
+    },
+    
 });
+
+function add_live_integer_validations(frm) {
+    let fields = [
+        "number_of_days_lead_completed_in",
+        "re_approval_deadline_days",
+        "assignment_timeout_minutes"
+    ];
+
+    fields.forEach(field => {
+        let input = frm.get_field(field).$input;
+        if (!input) return;
+
+        input.off("keyup").on("keyup", () => {
+            let value = input.val();
+
+            if (value === "") return;
+
+            // Check if value contains only digits
+            if (!/^\d+$/.test(value)) {
+                frappe.msgprint({
+                    title: __("Invalid Input"),
+                    message: __("Only numeric values are allowed."),
+                    indicator: "red"
+                });
+                input.val("");
+                return;
+            }
+
+            // Check for > 0 rule
+            if (parseInt(value) <= 0) {
+                frappe.msgprint({
+                    title: __("Invalid Input"),
+                    message: __("Value must be greater than 0."),
+                    indicator: "red"
+                });
+                input.val("");
+            }
+        });
+    });
+}
 
 function parseArrayField(val) {
     if (!val && val !== "") return [];

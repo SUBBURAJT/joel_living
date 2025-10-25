@@ -1,0 +1,364 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "autoname": "format:SCF-{MM}-{YYYY}-{###}",
+ "creation": "2025-10-15 21:05:57.319250",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "type_register",
+  "column_break_imzp",
+  "column_break_atyq",
+  "clients_information_section",
+  "first_name",
+  "passport_number",
+  "main_phone_number",
+  "home_address",
+  "country_of_origin",
+  "extra_joint_owners",
+  "column_break_runx",
+  "last_name",
+  "passport_date_of_expiry",
+  "uae_phone_number",
+  "address_in_uae",
+  "country_of_residence",
+  "column_break_bxub",
+  "passport_copy",
+  "date_of_birth",
+  "email",
+  "age_range",
+  "yearly_estimated_income_as_per_kyc",
+  "unit_info_section",
+  "type",
+  "project",
+  "unit_area_sqft",
+  "unit_price_aed",
+  "upload_booking_form",
+  "soa_upload",
+  "column_break_ubuh",
+  "unit_number",
+  "developer_sales_representative",
+  "unit_view",
+  "bookingeoi_paid",
+  "spa_signed",
+  "bookingeoi_paid_amount_aed",
+  "column_break_fajs",
+  "developer",
+  "unit_type",
+  "unit_floor",
+  "booking_form_signed",
+  "spa_upload",
+  "client_screening_section",
+  "column_break_aguu",
+  "is_client_screened_before_payment",
+  "screening_result",
+  "column_break_mzvj",
+  "screenshot_of_green_light",
+  "reason_for_late_screening",
+  "column_break_smdm",
+  "screening_date_and_time",
+  "screenshot_of_final_screening",
+  "lead_id"
+ ],
+ "fields": [
+  {
+   "fieldname": "type_register",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Type Register",
+   "options": "EOI\nCompleted Sale"
+  },
+  {
+   "fieldname": "column_break_imzp",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "column_break_atyq",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "clients_information_section",
+   "fieldtype": "Section Break",
+   "label": "Client(s) Information "
+  },
+  {
+   "fieldname": "first_name",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "First Name"
+  },
+  {
+   "fieldname": "passport_number",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Passport Number"
+  },
+  {
+   "fieldname": "main_phone_number",
+   "fieldtype": "Data",
+   "label": "Main Phone Number"
+  },
+  {
+   "fieldname": "home_address",
+   "fieldtype": "Small Text",
+   "label": "Home Address"
+  },
+  {
+   "fieldname": "country_of_origin",
+   "fieldtype": "Data",
+   "label": "Country of Origin"
+  },
+  {
+   "fieldname": "extra_joint_owners",
+   "fieldtype": "Select",
+   "label": "Extra Joint Owners",
+   "options": "No Joint Owners\n1\n2\n3"
+  },
+  {
+   "fieldname": "column_break_runx",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "last_name",
+   "fieldtype": "Data",
+   "label": "Last Name"
+  },
+  {
+   "fieldname": "passport_date_of_expiry",
+   "fieldtype": "Date",
+   "label": "Passport Date of Expiry"
+  },
+  {
+   "fieldname": "uae_phone_number",
+   "fieldtype": "Data",
+   "label": "UAE Phone Number"
+  },
+  {
+   "fieldname": "address_in_uae",
+   "fieldtype": "Small Text",
+   "label": "Address in UAE"
+  },
+  {
+   "fieldname": "country_of_residence",
+   "fieldtype": "Data",
+   "label": "Country of Residence"
+  },
+  {
+   "fieldname": "column_break_bxub",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "passport_copy",
+   "fieldtype": "Attach",
+   "label": "Passport Copy"
+  },
+  {
+   "fieldname": "date_of_birth",
+   "fieldtype": "Date",
+   "in_list_view": 1,
+   "label": "Date of Birth"
+  },
+  {
+   "fieldname": "email",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Email"
+  },
+  {
+   "fieldname": "age_range",
+   "fieldtype": "Select",
+   "label": "Age Range",
+   "options": "21-29\n30-45\n46-55\n56-70\n+70"
+  },
+  {
+   "fieldname": "yearly_estimated_income_as_per_kyc",
+   "fieldtype": "Currency",
+   "label": "Yearly Estimated Income (as per KYC)"
+  },
+  {
+   "fieldname": "unit_info_section",
+   "fieldtype": "Section Break",
+   "label": "Unit Info"
+  },
+  {
+   "fieldname": "type",
+   "fieldtype": "Select",
+   "label": "Type",
+   "options": "Off-plan\nSecondary"
+  },
+  {
+   "fieldname": "project",
+   "fieldtype": "Data",
+   "label": "Project"
+  },
+  {
+   "fieldname": "unit_area_sqft",
+   "fieldtype": "Float",
+   "label": "Unit Area (SQFT)"
+  },
+  {
+   "fieldname": "unit_price_aed",
+   "fieldtype": "Currency",
+   "label": "Unit Price (AED)"
+  },
+  {
+   "fieldname": "upload_booking_form",
+   "fieldtype": "Attach",
+   "label": "Upload Booking Form"
+  },
+  {
+   "fieldname": "soa_upload",
+   "fieldtype": "Attach",
+   "label": "SOA Upload"
+  },
+  {
+   "fieldname": "column_break_ubuh",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "unit_number",
+   "fieldtype": "Int",
+   "label": "Unit Number"
+  },
+  {
+   "fieldname": "developer_sales_representative",
+   "fieldtype": "Data",
+   "label": "Developer Sales Representative"
+  },
+  {
+   "fieldname": "unit_view",
+   "fieldtype": "Data",
+   "label": "Unit View"
+  },
+  {
+   "fieldname": "bookingeoi_paid",
+   "fieldtype": "Currency",
+   "label": "Booking/EOI Paid"
+  },
+  {
+   "fieldname": "spa_signed",
+   "fieldtype": "Select",
+   "label": "SPA Signed",
+   "options": "Yes\nNo"
+  },
+  {
+   "fieldname": "bookingeoi_paid_amount_aed",
+   "fieldtype": "Currency",
+   "label": "Booking/EOI Paid Amount (AED)"
+  },
+  {
+   "fieldname": "column_break_fajs",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "developer",
+   "fieldtype": "Data",
+   "label": "Developer"
+  },
+  {
+   "fieldname": "unit_type",
+   "fieldtype": "Data",
+   "label": "Unit Type"
+  },
+  {
+   "fieldname": "unit_floor",
+   "fieldtype": "Select",
+   "label": "Unit Floor"
+  },
+  {
+   "fieldname": "booking_form_signed",
+   "fieldtype": "Select",
+   "label": "Booking Form Signed",
+   "options": "Yes\nNo"
+  },
+  {
+   "fieldname": "spa_upload",
+   "fieldtype": "Attach",
+   "label": "SPA Upload"
+  },
+  {
+   "fieldname": "client_screening_section",
+   "fieldtype": "Section Break",
+   "label": "Client Screening"
+  },
+  {
+   "fieldname": "column_break_aguu",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "is_client_screened_before_payment",
+   "fieldtype": "Select",
+   "label": "Is Client Screened Before Payment",
+   "options": "Yes\nNo"
+  },
+  {
+   "fieldname": "screening_result",
+   "fieldtype": "Select",
+   "label": "Screening Result",
+   "options": "Green\nRed"
+  },
+  {
+   "fieldname": "column_break_mzvj",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "screenshot_of_green_light",
+   "fieldtype": "Attach",
+   "label": "Screenshot of Green Light"
+  },
+  {
+   "fieldname": "reason_for_late_screening",
+   "fieldtype": "Small Text",
+   "label": "Reason for Late Screening"
+  },
+  {
+   "fieldname": "column_break_smdm",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "screening_date_and_time",
+   "fieldtype": "Datetime",
+   "label": "Screening Date and Time"
+  },
+  {
+   "fieldname": "screenshot_of_final_screening",
+   "fieldtype": "Attach",
+   "label": "Screenshot of Final Screening"
+  },
+  {
+   "fieldname": "lead_id",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Lead ID",
+   "options": "Lead",
+   "read_only": 1
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2025-10-22 21:51:28.616357",
+ "modified_by": "Administrator",
+ "module": "Joel Living",
+ "name": "Sales Completion Form",
+ "naming_rule": "Expression",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

@@ -1,6 +1,7 @@
 {
  "actions": [],
  "allow_rename": 1,
+ "autoname": "format:LAH-{MM}-{YYYY}-{###}",
  "creation": "2025-10-09 22:59:17.878242",
  "doctype": "DocType",
  "engine": "InnoDB",
@@ -8,6 +9,7 @@
   "lead",
   "action",
   "assigned_to",
+  "column_break_feav",
   "action_by",
   "timestamp"
  ],
@@ -15,24 +17,28 @@
   {
    "fieldname": "lead",
    "fieldtype": "Link",
+   "in_list_view": 1,
    "label": "Lead",
    "options": "Lead"
   },
   {
    "fieldname": "action",
    "fieldtype": "Select",
+   "in_list_view": 1,
    "label": "Action",
    "options": "Assigned\nReassigned\nSelf-assigned\nUnassigned\nUnassigned (Timeout)\nUnassigned (Overdue)\nRe-approved Assignment\nUnassigned (Re-approval Expired)\nExtension Request Rejected"
   },
   {
    "fieldname": "assigned_to",
    "fieldtype": "Link",
+   "in_list_view": 1,
    "label": "Assigned To",
    "options": "User"
   },
   {
    "fieldname": "action_by",
    "fieldtype": "Link",
+   "in_list_view": 1,
    "label": "Action By",
    "options": "User"
   },
@@ -40,15 +46,20 @@
    "fieldname": "timestamp",
    "fieldtype": "Datetime",
    "label": "Timestamp"
+  },
+  {
+   "fieldname": "column_break_feav",
+   "fieldtype": "Column Break"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-10-10 23:43:56.037901",
+ "modified": "2025-10-22 21:52:29.618376",
  "modified_by": "Administrator",
  "module": "Joel Living",
  "name": "Lead Assignment History",
+ "naming_rule": "Expression",
  "owner": "Administrator",
  "permissions": [
   {

@@ -182,43 +182,50 @@ def assign_lead_to_me(lead_name):
     return {"status": "success", "message": success_message}
 def on_lead_assignment_change(doc, method):
     """
-    Hook that runs before every Lead save. This is the central point for
-    creating manual assignment history and updating timestamps.
+    Runs before every Lead save — handles assignment changes.
     """
     if doc.flags.get("ignore_assignment_hook"):
         return
 
     try:
+        # Skip for new docs; handled in after_insert
         if doc.is_new():
-            if doc.lead_owner:
-                doc.custom_assigned_at = now_datetime()
-                _create_assignment_history(doc.name, "Assigned", doc.lead_owner)
             return
 
         doc_before_save = doc.get_doc_before_save()
         if not doc_before_save or doc_before_save.lead_owner == doc.lead_owner:
-            return # No change, so do nothing.
+            return  # No change
 
         old_owner = doc_before_save.lead_owner
         new_owner = doc.lead_owner
         action_by = frappe.session.user
         action = ""
-        # print(f"[DEBUG] Lsssssssssssssssssssssssead {doc.name} ownership change: {old_owner} -> {new_owner} by {action_by}")
-        if new_owner and not old_owner: # Assigned
+
+        if new_owner and not old_owner:  # Assigned
             doc.custom_assigned_at = now_datetime()
             action = "Self-assigned" if new_owner == action_by else "Assigned"
-        elif new_owner and old_owner: # Reassigned
+        elif new_owner and old_owner:  # Reassigned
             doc.custom_assigned_at = now_datetime()
             action = "Reassigned"
-        elif not new_owner and old_owner: # Unassigned by a user
+        elif not new_owner and old_owner:  # Unassigned
             doc.custom_assigned_at = None
             action = "Unassigned"
-        
+
         if action:
             _create_assignment_history(doc.name, action, new_owner, action_by)
-            
+
     except Exception:
         frappe.log_error(title=f"Lead Assignment Hook Failed for: {doc.name}", message=frappe.get_traceback())
+
+
+def after_insert_lead_assignment(doc, method):
+    """Handle initial assignment tracking for new leads."""
+    try:
+        if doc.lead_owner:
+            doc.custom_assigned_at = now_datetime()
+            _create_assignment_history(doc.name, "Assigned", doc.lead_owner)
+    except Exception:
+        frappe.log_error(title=f"Lead After Insert Hook Failed for: {doc.name}", message=frappe.get_traceback())
 
 
 # -------------------------------------------------------- #
@@ -407,7 +414,7 @@ def process_final_unassignment(lead_name, owner):
         frappe.db.rollback()
         frappe.log_error(title=f"Failed final unassignment for lead: {lead_name}", message=str(e))
 
-
+          
 @frappe.whitelist()
 def dispatch_expired_reapproved_leads():
     """
@@ -560,7 +567,7 @@ def create_extension_request_for_lead(lead_name, owner):
 
                 <div style="padding: 24px; text-align: left; color: #3f3f46;">
                     <p style="margin-bottom: 20px; font-size: 16px;">
-                        A lead assigned to <b>{owner}</b> is overdue and requires your approval for a 3-day extension.
+                        A lead assigned to <b>{owner}</b> is overdue and requires your approval for extension.
                     </p>
 
                     <div style="border-top: 1px solid #e4e4e7; border-bottom: 1px solid #e4e4e7; padding: 16px 0;">
@@ -613,7 +620,7 @@ def create_extension_request_for_lead(lead_name, owner):
                     "subject": f"Lead Extension Required: {lead_doc.name}",
                     "for_user": user,
                     # Optional: you can include the full html content in the system notification as well
-                    "email_content": email_message
+                    # "email_content": email_message
                 }).insert(ignore_permissions=True)
             except Exception as e:
                 frappe.log_error(
@@ -715,7 +722,7 @@ def reject_lead_extension(request_name, reason=""):
         req_doc.save(ignore_permissions=True)
 
         _create_assignment_history(lead_doc.name, "Extension Request Rejected", None, user)
-        should_send_email = frappe.db.get_single_value("Admin Settings", "send_email_on_rejection")
+        should_send_email = frappe.db.get_single_value("Admin Settings", "send_mail_on_rejection")
         
         # Only proceed with email creation and sending if the checkbox is checked.
         if should_send_email:

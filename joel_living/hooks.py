@@ -28,7 +28,10 @@ app_license = "mit"
 # app_include_css = "/assets/joel_living/css/joel_living.css"
 # app_include_js = "/assets/joel_living/js/joel_living.js"
 
-app_include_js = "/assets/joel_living/js/toggle.js"
+app_include_js = [
+    "/assets/joel_living/js/toggle.js",
+    "/assets/joel_living/js/workflow.js"
+]
 app_include_css = "/assets/joel_living/css/style.css"
 
 
@@ -142,7 +145,8 @@ has_permission = {
 
 doc_events = {
 	"Lead": {
-        "before_save": "joel_living.lead_permission.on_lead_assignment_change"
+        "before_save": "joel_living.lead_permission.on_lead_assignment_change",
+        "after_insert": "joel_living.lead_permission.after_insert_lead_assignment"
    
     }
 }

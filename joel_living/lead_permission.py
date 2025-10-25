@@ -620,7 +620,7 @@ def create_extension_request_for_lead(lead_name, owner):
                     "subject": f"Lead Extension Required: {lead_doc.name}",
                     "for_user": user,
                     # Optional: you can include the full html content in the system notification as well
-                    "email_content": email_message
+                    # "email_content": email_message
                 }).insert(ignore_permissions=True)
             except Exception as e:
                 frappe.log_error(
@@ -722,7 +722,7 @@ def reject_lead_extension(request_name, reason=""):
         req_doc.save(ignore_permissions=True)
 
         _create_assignment_history(lead_doc.name, "Extension Request Rejected", None, user)
-        should_send_email = frappe.db.get_single_value("Admin Settings", "send_email_on_rejection")
+        should_send_email = frappe.db.get_single_value("Admin Settings", "send_mail_on_rejection")
         
         # Only proceed with email creation and sending if the checkbox is checked.
         if should_send_email:

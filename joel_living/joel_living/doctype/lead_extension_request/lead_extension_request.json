@@ -1,6 +1,7 @@
 {
  "actions": [],
  "allow_rename": 1,
+ "autoname": "format:LER-{MM}-{YYYY}-{###}",
  "creation": "2025-10-10 21:54:13.169543",
  "doctype": "DocType",
  "engine": "InnoDB",
@@ -8,21 +9,25 @@
   "lead",
   "lead_owner",
   "status",
+  "column_break_vkvr",
   "requested_on",
   "approved_by",
   "approved_on",
+  "section_break_gqna",
   "rejected_reason"
  ],
  "fields": [
   {
    "fieldname": "lead",
    "fieldtype": "Link",
+   "in_list_view": 1,
    "label": "Lead",
    "options": "Lead"
   },
   {
    "fieldname": "lead_owner",
    "fieldtype": "Link",
+   "in_list_view": 1,
    "label": "Lead Owner",
    "options": "User"
   },
@@ -30,17 +35,20 @@
    "default": "Open",
    "fieldname": "status",
    "fieldtype": "Select",
+   "in_list_view": 1,
    "label": "Status",
    "options": "Open\nApproved\nRejected"
   },
   {
    "fieldname": "requested_on",
    "fieldtype": "Datetime",
+   "in_list_view": 1,
    "label": "Requested On"
   },
   {
    "fieldname": "approved_by",
    "fieldtype": "Link",
+   "in_list_view": 1,
    "label": "Approved By",
    "options": "User"
   },
@@ -53,15 +61,24 @@
    "fieldname": "rejected_reason",
    "fieldtype": "Small Text",
    "label": "Rejected Reason"
+  },
+  {
+   "fieldname": "column_break_vkvr",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "section_break_gqna",
+   "fieldtype": "Section Break"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-10-10 23:45:20.079087",
+ "modified": "2025-10-22 21:53:39.237087",
  "modified_by": "Administrator",
  "module": "Joel Living",
  "name": "Lead Extension Request",
+ "naming_rule": "Expression",
  "owner": "Administrator",
  "permissions": [
   {

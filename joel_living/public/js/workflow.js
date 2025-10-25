@@ -14,7 +14,17 @@ class WorkflowOverride extends frappe.ui.form.States {
             this.frm.page.clear_actions_menu();
             transitions.forEach((d) => {
                 // console.log("Checking transition:", d.action);
-                if (frappe.user_roles.includes(d.allowed)) {
+                if (!frappe.user_roles.includes(d.allowed)) {
+                    return;
+                }
+
+                if (
+                    me.frm.doc.doctype === "Lead" &&
+                    frappe.user.has_role("Sales Agent") &&
+                    !me.frm.doc.lead_owner
+                ) {
+                    return;
+                }
                     // console.log("User has access to transition:", d.action);
                     added = true;
                     me.frm.page.add_action_item(__(d.action), function () {
@@ -66,7 +76,7 @@ class WorkflowOverride extends frappe.ui.form.States {
                             me.apply_workflow_action(d);
                         }
                     });
-                }
+                
             });
 
             this.setup_btn(added);

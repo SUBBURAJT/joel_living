@@ -60,7 +60,31 @@ class WorkflowOverride extends frappe.ui.form.States {
                                                 }
                                             }
                                         });
-                                    } else {
+                                    } 
+                                    else if (d.action === "Lead Lost") {
+
+                                        frappe.prompt(
+                                            [
+                                                {
+                                                    fieldname: "lost_reason",
+                                                    label: "Lead Lost Reason",
+                                                    fieldtype: "Small Text",
+                                                    reqd: 1
+                                                }
+                                            ],
+                                            (data) => {
+                                                me.frm.set_value("custom_lead_lost_reason", data.lost_reason);
+                                                me.frm.save().then(() => {
+                                                    me.apply_workflow_action(d);
+                                                });
+                                            },
+                                            __("Provide Lead Lost Reason"),
+                                            __("Submit")
+                                        );
+
+                                    } 
+                                    
+                                    else {
                                         me.apply_workflow_action(d);
                                     }
                                 },

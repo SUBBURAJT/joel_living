@@ -10,6 +10,8 @@
   "file",
   "column_break_iocy",
   "download_button",
+  "created_by",
+  "created_on",
   "section_break_rvao",
   "success_count",
   "failed_count",
@@ -120,13 +122,30 @@
    "fieldname": "download_button",
    "fieldtype": "HTML",
    "label": "Download Button"
+  },
+  {
+   "default": "__user",
+   "fieldname": "created_by",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Created By",
+   "options": "User",
+   "read_only": 1
+  },
+  {
+   "default": "Today",
+   "fieldname": "created_on",
+   "fieldtype": "Date",
+   "in_list_view": 1,
+   "label": "Created On",
+   "read_only": 1
   }
  ],
  "grid_page_length": 50,
  "hide_toolbar": 1,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-10-08 22:21:01.199965",
+ "modified": "2025-10-27 23:21:54.788374",
  "modified_by": "Administrator",
  "module": "Joel Living",
  "name": "Lead Import Request",

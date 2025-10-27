@@ -65,13 +65,13 @@ frappe.ui.form.on("Lead Import Request", {
 			}
 
 			// Show button if failed_leads_file exists
-			if (frm.doc.failed_leads_file) {
-				wrapper_html += `
-			<button class="btn btn-danger btn-sm m-1" id="download_failed_file_btn">
-				<i class="fa fa-file-excel-o"></i> Download Failed Leads
-			</button>
-		`;
-			}
+		// 	if (frm.doc.failed_leads_file) {
+		// 		wrapper_html += `
+		// 	<button class="btn btn-danger btn-sm m-1" id="download_failed_file_btn">
+		// 		<i class="fa fa-file-excel-o"></i> Download Failed Leads
+		// 	</button>
+		// `;
+		// 	}
 
 			wrapper_html += `</div>`;
 			frm.fields_dict.download_button.$wrapper.html(wrapper_html);
@@ -177,6 +177,21 @@ frappe.ui.form.on("Lead Import Request", {
 					"Actions"
 				);
 			}
+		}
+
+		if (!frm.doc.__islocal) {
+			let wrapper_html = `<div style="padding:20px;">`;
+			// Show button if failed_leads_file exists
+			if (frm.doc.failed_leads_file) {
+				wrapper_html += `
+			<button class="btn btn-danger btn-sm m-1" id="download_failed_file_btn">
+				<i class="fa fa-file-excel-o"></i> Download Failed Leads
+			</button>
+		`;
+			}
+			wrapper_html += `</div>`;
+			frm.fields_dict.download_button.$wrapper.html(wrapper_html);
+
 		}
 		// 🔒 Hide the Clear button after Approved/Rejected/Partially Approved
 		setTimeout(() => {

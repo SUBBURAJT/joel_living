@@ -37,7 +37,7 @@ def get_sales_agent_lead_conditions(user):
                 continue
 
             sub_conditions = []
-            cats.append("Meta Leads")
+            # cats.append("Meta Leads")
             if cats:
                 cats_sql = ",".join([frappe.db.escape(c) for c in cats])
                 sub_conditions.append(f"tabLead.custom_lead_category IN ({cats_sql})")
@@ -86,7 +86,7 @@ def has_sales_agent_lead_permission(doc, user):
         for r in user_rows:
             try:
                 cats = frappe.parse_json(r.lead_category or "[]")
-                cats.append("Meta Leads")
+                # cats.append("Meta Leads")
                 sources = frappe.parse_json(r.main_lead_source or "[]")
             except Exception:
                 continue

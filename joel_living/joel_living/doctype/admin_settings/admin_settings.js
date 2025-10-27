@@ -334,8 +334,8 @@ function render_user_restrictions(frm) {
 }
 
 function open_user_restriction_prompt(frm, row = null) {
-    const categories_list = ["New", "Reshuffled Leads", "Google Leads",
-        "Website Leads", "Fresh Lead", "Lucky Lead", "Data Lead"];
+    const categories_list = ["Reshuffled Leads", 
+        "Fresh Lead", "Lucky Lead", "Data Lead"];
 
     frappe.call({
         method: "frappe.client.get_list",

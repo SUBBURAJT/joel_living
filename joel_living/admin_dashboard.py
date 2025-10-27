@@ -9,10 +9,7 @@ def get_lead_dashboard_data(lead_owner=None, from_date=None, to_date=None, custo
         to_date = nowdate()
         from_date = add_days(to_date, -29)
         
-    # --- Date Handling for DateTime Fields (Key Change) ---
-    # If a to_date is present, append the time to ensure the query includes
-    # all records from that entire day, up to 23:59:59.
-    # This corrects the issue where records from "today" were being excluded.
+   
     if to_date:
         to_date = f"{to_date} 23:59:59"
 

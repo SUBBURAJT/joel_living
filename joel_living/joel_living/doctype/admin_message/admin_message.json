@@ -1,6 +1,6 @@
 {
  "actions": [],
- "creation": "2025-10-06 20:25:33.716020",
+ "creation": "2025-10-22 21:16:36.179023",
  "doctype": "DocType",
  "engine": "InnoDB",
  "field_order": [
@@ -8,30 +8,41 @@
   "send_to_all_users",
   "subject",
   "message",
-  "select_user"
+  "select_user",
+  "sent_date",
+  "status",
+  "is_send"
  ],
  "fields": [
   {
    "fieldname": "recipients",
    "fieldtype": "Table MultiSelect",
    "label": "Recipients",
-   "options": "Multiselect User"
+   "options": "System Message Recipient",
+   "read_only_depends_on": "eval:doc.status == \"Sent\""
   },
   {
    "default": "0",
    "fieldname": "send_to_all_users",
    "fieldtype": "Check",
-   "label": "Send To All Users"
+   "label": "Send To All Users",
+   "read_only_depends_on": "eval:doc.status == \"Sent\""
   },
   {
    "fieldname": "subject",
    "fieldtype": "Data",
-   "label": "Subject"
+   "in_list_view": 1,
+   "label": "Subject",
+   "read_only_depends_on": "eval:doc.status == \"Sent\"",
+   "reqd": 1
   },
   {
    "fieldname": "message",
    "fieldtype": "Text",
-   "label": "Message"
+   "in_list_view": 1,
+   "label": "Message",
+   "read_only_depends_on": "eval:doc.status == \"Sent\"",
+   "reqd": 1
   },
   {
    "fieldname": "select_user",
@@ -39,16 +50,36 @@
    "hidden": 1,
    "label": "Select User",
    "options": "User"
+  },
+  {
+   "fieldname": "sent_date",
+   "fieldtype": "Date",
+   "hidden": 1,
+   "label": "Sent Date"
+  },
+  {
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "hidden": 1,
+   "label": "Status",
+   "options": "Draft\nSending\nSent\nSending Failed"
+  },
+  {
+   "default": "0",
+   "fieldname": "is_send",
+   "fieldtype": "Check",
+   "hidden": 1,
+   "label": "Is Send"
   }
  ],
  "grid_page_length": 50,
  "hide_toolbar": 1,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-10-17 10:29:16.232498",
+ "modified": "2025-10-22 21:16:36.179023",
  "modified_by": "Administrator",
  "module": "Joel Living",
- "name": "System Message",
+ "name": "Admin Message",
  "owner": "Administrator",
  "permissions": [
   {

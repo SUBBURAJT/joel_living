@@ -75,17 +75,17 @@ def get_system_message_template(subject, message_body, sender_name=None):
 def add_to_inbox(subject, message, recipients, sent_date=None):
     """Insert records into Admin Message Inbox and return mapping {user: docname}"""
     inbox_map = {}
-    for user in recipients:
-        doc = frappe.get_doc({
-            "doctype": "Admin Message Inbox",
-            "title": subject,
-            "content": message,
-            "recipient": user,
-            "send_date": sent_date or frappe.utils.now_datetime(),
-        })
-        doc.name = frappe.model.naming.make_autoname("MSG-.YYYY.-.#####")
-        doc.insert(ignore_permissions=True)
-        inbox_map[user] = doc.name
+    # for user in recipients:
+    doc = frappe.get_doc({
+        "doctype": "Admin Message Inbox",
+        "title": subject,
+        "content": message,
+        "recipient": recipients,
+        "send_date": sent_date or frappe.utils.now_datetime(),
+    })
+    doc.name = frappe.model.naming.make_autoname("MSG-.YYYY.-.#####")
+    doc.insert(ignore_permissions=True)
+    inbox_map[user] = doc.name
     return inbox_map
 
 

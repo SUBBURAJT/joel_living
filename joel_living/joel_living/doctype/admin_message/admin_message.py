@@ -7,31 +7,50 @@ from frappe.utils import now_datetime
 import re
 
 class AdminMessage(Document):
-	def after_insert(self):
-		"""Triggered when the Admin Message is saved and confirmed"""
-		subject = self.subject or "Admin Message"
-		message_body = self.message or "No message content provided."
-		sender = frappe.session.user
+    def after_insert(self):
+        """Triggered when the Admin Message is saved and confirmed"""
+        print(self.__dict__)  # This will print the document's data
 
-		# Update to "Sending" before enqueue
-		self.status = "Sending"
-		self.sent_date = now_datetime()
-		self.save(ignore_permissions=True)
+        subject = self.subject or "Admin Message"
+        message_body = self.message or "No message content provided."
+        sender = frappe.session.user
+        
+        recipients = []
+        if self.send_to_all_users:
+            recipients = frappe.get_all(
+                "User",
+                filters={"enabled": 1, "user_type": "System User"},
+                pluck="name"
+            )
+            recipients = [u for u in recipients if u not in [sender, "Guest"]]
+        else:
+            # Assuming the child table fieldname is 'recipients' and the field for the user is 'user'
+            for recipient in self.get("recipients"):
+                recipients.append(recipient.user)
 
-		# Enqueue background job
-		frappe.enqueue(
-			send_system_message_job,
-			queue='long',
-			timeout=600,
-			is_async=True,
-			subject=subject,
-			message_body=message_body,
-			sender=sender,
-			message_docname=self.name
-		)
+        if not recipients:
+            frappe.msgprint("No recipients found.")
+            return
 
-		frappe.msgprint("Message sending has been enqueued successfully")
+        # Update to "Sending" before enqueue
+        self.status = "Sending"
+        self.sent_date = now_datetime()
+        self.save(ignore_permissions=True)
 
+        # Enqueue background job
+        frappe.enqueue(
+            send_system_message_job,
+            queue='long',
+            timeout=600,
+            is_async=True,
+            subject=subject,
+            message_body=message_body,
+            sender=sender,
+            recipients=recipients, # Pass the dynamically generated recipients list
+            message_docname=self.name
+        )
+
+        frappe.msgprint("Message sending has been enqueued successfully")
 
 
 # -----------------------------------------------
@@ -92,7 +111,7 @@ def add_to_inbox(subject, message, recipients, sent_date=None):
 # -----------------------------------------------
 # Main Job Function (Async)
 # -----------------------------------------------
-def send_system_message_job(subject, message_body, sender, message_docname):
+def send_system_message_job(subject, message_body, sender, recipients, message_docname):
     """Runs in background — sends emails and updates status accordingly"""
     try:
         # Update to "Sending"
@@ -103,15 +122,6 @@ def send_system_message_job(subject, message_body, sender, message_docname):
         email_message = get_system_message_template(subject, message_body, sender_full_name)
         sent_date = now_datetime()
 
-        # Determine recipients
-        recipients = frappe.get_all(
-            "User",
-            filters={"enabled": 1, "user_type": "System User"},
-            pluck="name"
-        )
-        recipients = [u for u in recipients if u not in [sender]]
-		
-		
         if not recipients:
             frappe.db.set_value("Admin Message", message_docname, "status", "Send Failed")
             frappe.db.commit()
@@ -145,7 +155,7 @@ def send_system_message_job(subject, message_body, sender, message_docname):
                 now=True
             )
 
-        # ✅ Update status to "Send"
+        # ✅ Update status to "Sent"
         frappe.db.set_value("Admin Message", message_docname, {
             "status": "Sent",
             "sent_date": sent_date
@@ -158,7 +168,6 @@ def send_system_message_job(subject, message_body, sender, message_docname):
         frappe.db.set_value("Admin Message", message_docname, "status", "Send Failed")
         frappe.db.commit()
         frappe.log_error(frappe.get_traceback(), "Admin Message Send Failed")
-
 
 def system_inbox_permission(user):
     """Restrict Admin Message Inbox so users only see their own messages.

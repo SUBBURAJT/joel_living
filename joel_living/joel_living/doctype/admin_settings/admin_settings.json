@@ -7,6 +7,7 @@
  "field_order": [
   "number_of_days_lead_completed_in",
   "re_approval_deadline_days",
+  "send_mail_on_import_and_export_request",
   "column_break_wlzx",
   "assignment_timeout_minutes",
   "send_email_on_extension_request",
@@ -18,7 +19,6 @@
   "email_configuration_section",
   "email_account",
   "to_mail_id",
-  "send_mail_on_import_and_export_request",
   "column_break_cpld",
   "cc_mail_ids"
  ],
@@ -59,6 +59,7 @@
    "description": "It must use a single email ID for sending mails during import and export requests.",
    "fieldname": "to_mail_id",
    "fieldtype": "Data",
+   "hidden": 1,
    "label": "To Mail ID",
    "options": "Email"
   },
@@ -70,6 +71,7 @@
    "description": "We can mention multiple email IDs separated by commas to add them in CC.",
    "fieldname": "cc_mail_ids",
    "fieldtype": "Small Text",
+   "hidden": 1,
    "label": "CC Mail Id's"
   },
   {
@@ -117,7 +119,7 @@
  "index_web_pages_for_search": 1,
  "issingle": 1,
  "links": [],
- "modified": "2025-10-22 20:54:08.023282",
+ "modified": "2025-10-28 21:00:03.183322",
  "modified_by": "Administrator",
  "module": "Joel Living",
  "name": "Admin Settings",

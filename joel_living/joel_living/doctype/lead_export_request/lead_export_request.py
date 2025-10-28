@@ -24,7 +24,21 @@ class LeadExportRequest(Document):
     def send_notifications(self):
         """Send email and system notification for Lead Export Request"""
         admin_settings = frappe.get_single("Admin Settings")
+        manager_roles = ["Admin", "Super Admin"]
+        recipients_list = frappe.db.sql("""
+            SELECT DISTINCT hr.parent
+            FROM `tabHas Role` AS hr
+            INNER JOIN `tabUser` AS u ON hr.parent = u.name
+            WHERE
+                hr.role IN %(roles)s
+                AND u.enabled = 1
+        """, {"roles": manager_roles}, as_list=1)
+        
+        recipients = [row[0] for row in recipients_list]
 
+        if not recipients:
+            frappe.log_error("No active 'Admin' or 'Super Admin' users found for notification.", "Lead Import Notification Skipped")
+            return
         # Only proceed if Email Account is configured
         if not admin_settings.email_account:
             frappe.log_error("Admin Settings missing Email Account. Lead Export Notification Skipped.", 
@@ -35,9 +49,9 @@ class LeadExportRequest(Document):
         requester = frappe.utils.get_fullname(owner_email) or owner_email
 
         # Prepare CC emails
-        cc_emails = []
-        if admin_settings.cc_mail_ids:
-            cc_emails = [e.strip() for e in admin_settings.cc_mail_ids.replace("\n", ",").split(",") if e.strip()]
+        # cc_emails = []
+        # if admin_settings.cc_mail_ids:
+        #     cc_emails = [e.strip() for e in admin_settings.cc_mail_ids.replace("\n", ",").split(",") if e.strip()]
 
         # URL to view the export request
         doc_url = f"{get_url()}/app/lead-export-request/{self.name}"
@@ -89,8 +103,8 @@ class LeadExportRequest(Document):
             # Send email
             try:
                 send_custom_email(
-                    to=admin_settings.to_mail_id,
-                    cc=cc_emails,
+                    to=recipients,
+                    # cc=cc_emails,
                     subject=subject,
                     message=message
                 )
@@ -99,18 +113,19 @@ class LeadExportRequest(Document):
                 frappe.log_error(f"Failed to send Lead Export Request email: {str(e)}", "Lead Export Notification Error")
 
         # Send system notification
-        try:
-            frappe.get_doc({
-                "doctype": "Notification Log",
-                "subject": f"Lead Export Request Created: {self.name}",
-                "type": "Alert",
-                "document_type": "Lead Export Request",
-                "document_name": self.name,
-                "for_user": owner_email,
-                "description": f"Your Lead Export Request {self.name} has been created and is currently in {self.status or 'Draft'} status."
-            }).insert(ignore_permissions=True)
-        except Exception as e:
-            frappe.log_error(f"Failed to create system notification: {str(e)}", "Lead Export Notification")
+        for user in recipients:
+            try:
+                frappe.get_doc({
+                    "doctype": "Notification Log",
+                    "subject": f"Lead Export Request Created: {self.name}",
+                    "type": "Alert",
+                    "document_type": "Lead Export Request",
+                    "document_name": self.name,
+                    "for_user": user,
+                    "description": f"Your Lead Export Request {self.name} has been created and is currently in {self.status or 'Draft'} status."
+                }).insert(ignore_permissions=True)
+            except Exception as e:
+                frappe.log_error(f"Failed to create system notification: {str(e)}", "Lead Export Notification")
 
 
 @frappe.whitelist()
@@ -259,8 +274,9 @@ def send_export_notification(docname, status, error=None):
     """Send email and system notification for Lead Export Request"""
     try:
         doc = frappe.get_doc("Lead Export Request", docname)
+        # owner_email = doc.owner
         admin_settings = frappe.get_single("Admin Settings")
-
+        
         if not admin_settings.email_account:
             frappe.log_error("Admin Settings missing Email Account. Lead Export Notification Skipped.", "Lead Export Notification")
             return
@@ -269,9 +285,9 @@ def send_export_notification(docname, status, error=None):
         requester = frappe.utils.get_fullname(owner_email) or owner_email
 
         # Prepare CC emails
-        cc_emails = []
-        if admin_settings.cc_mail_ids:
-            cc_emails = [e.strip() for e in admin_settings.cc_mail_ids.replace("\n", ",").split(",") if e.strip()]
+        # cc_emails = []
+        # if admin_settings.cc_mail_ids:
+        #     cc_emails = [e.strip() for e in admin_settings.cc_mail_ids.replace("\n", ",").split(",") if e.strip()]
 
         doc_url = f"{get_url()}/app/lead-export-request/{doc.name}"
         subject = f"Lead Export Request {status}: {doc.name}"
@@ -324,15 +340,12 @@ def send_export_notification(docname, status, error=None):
         should_send_email = frappe.db.get_single_value("Admin Settings", "send_mail_on_import_and_export_request")
         if should_send_email:
             # Send email
-            send_custom_email(to=owner_email, cc=cc_emails, subject=subject, message=message)
+            send_custom_email(to=owner_email, subject=subject, message=message)
 
         # Send system notification
+        # for user in recipients:
         try:
-            desc = f"Your Lead Export Request {doc.name} has been {status}."
-            if status == "Rejected" and getattr(doc, "rejected_notes", None):
-                desc += f"\nNotes: {doc.rejected_notes}"
-            if status == "Failed" and error:
-                desc += f"\nError: {error}"
+            
 
             frappe.get_doc({
                 "doctype": "Notification Log",
@@ -341,7 +354,7 @@ def send_export_notification(docname, status, error=None):
                 "document_type": "Lead Export Request",
                 "document_name": doc.name,
                 "for_user": owner_email,
-                "description": desc
+                # "description": desc
             }).insert(ignore_permissions=True)
         except Exception as e:
             frappe.log_error(f"Failed to create system notification: {str(e)}", "Lead Export Notification")

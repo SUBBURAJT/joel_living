@@ -20,16 +20,32 @@ class LeadImportRequest(Document):
         """Send both email and system notification."""
         admin_settings = frappe.get_single("Admin Settings")
 
+        manager_roles = ["Admin", "Super Admin"]
+        recipients_list = frappe.db.sql("""
+            SELECT DISTINCT hr.parent
+            FROM `tabHas Role` AS hr
+            INNER JOIN `tabUser` AS u ON hr.parent = u.name
+            WHERE
+                hr.role IN %(roles)s
+                AND u.enabled = 1
+        """, {"roles": manager_roles}, as_list=1)
+        
+        recipients = [row[0] for row in recipients_list]
+
+        if not recipients:
+            frappe.log_error("No active 'Admin' or 'Super Admin' users found for notification.", "Lead Import Notification Skipped")
+            return
+
         requester = frappe.utils.get_fullname(self.owner) or self.owner
         doc_url = f"{get_url()}/app/lead-import-request/{self.name}"
         subject = f"New Lead Import Request from {requester}"
         should_send_email = frappe.db.get_single_value("Admin Settings", "send_mail_on_import_and_export_request")
         
         # ----- Send Email -----
-        if admin_settings.email_account and admin_settings.to_mail_id and should_send_email:
-            cc_emails = []
-            if admin_settings.cc_mail_ids:
-                cc_emails = [e.strip() for e in admin_settings.cc_mail_ids.replace("\n", ",").split(",") if e.strip()]
+        if admin_settings.email_account and should_send_email:
+            # cc_emails = []
+            # if admin_settings.cc_mail_ids:
+            #     cc_emails = [e.strip() for e in admin_settings.cc_mail_ids.replace("\n", ",").split(",") if e.strip()]
 
             message = f"""
             <div style="font-family: 'Segoe UI', Arial, sans-serif; background-color: #f7f9fc; padding: 25px;">
@@ -71,8 +87,8 @@ class LeadImportRequest(Document):
             """
 
             send_custom_email(
-                to=admin_settings.to_mail_id,
-                cc=cc_emails,
+                to=recipients,
+                # cc=cc_emails,
                 subject=subject,
                 message=message
             )
@@ -80,28 +96,29 @@ class LeadImportRequest(Document):
             frappe.log_error("⚠️ Admin Settings missing Email Account or To Mail ID.", "Lead Import Notification Skipped")
 
         # ----- Send System Notification -----
-        try:
-            frappe.publish_realtime(
-                event="msgprint",
-                message=f"🆕 New Lead Import Request: {self.name} submitted by {requester}.",
-                user=admin_settings.to_mail_id
-            )
+        for user in recipients:
+            try:
+                frappe.publish_realtime(
+                    event="msgprint",
+                    message=f"🆕 New Lead Import Request: {self.name} submitted by {requester}.",
+                    user=user
+                )
 
-            # Only create Notification Log if user exists
-            if frappe.get_value("User", admin_settings.to_mail_id):
+                # Only create Notification Log if user exists
+                # if frappe.get_value("User", admin_settings.to_mail_id):
                 frappe.get_doc({
                     "doctype": "Notification Log",
                     "document_type": self.doctype,
                     "document_name": self.name,
                     "subject": subject,
                     "from_user": self.owner,
-                    "for_user": admin_settings.to_mail_id,
+                    "for_user": user,
                     "type": "Alert"
                 }).insert(ignore_permissions=True)
 
-        except Exception as e:
-            # Log the error but do not block the job
-            frappe.log_error(e, "Lead Import Request Notification Skipped")
+            except Exception as e:
+                # Log the error but do not block the job
+                frappe.log_error(e, "Lead Import Request Notification Skipped")
 
 
 

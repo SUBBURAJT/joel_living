@@ -364,7 +364,13 @@ function open_user_restriction_prompt(frm, row = null) {
             const d = new frappe.ui.Dialog({
                 title: row ? "Edit Restriction" : "Add Restriction",
                 fields: [
-                    { fieldname: "user", label: "User", fieldtype: "Link", options: "User", default: row ? row.user : "", reqd: 1, read_only: row ? 1 : 0 },
+                    { fieldname: "user", label: "User", fieldtype: "Link", options: "User", default: row ? row.user : "", reqd: 1, read_only: row ? 1 : 0,get_query: function() {
+            return {
+                filters: {
+                    'role_profile_name': 'Sales Agent'
+                }
+            }
+        } },
                     { fieldname: "categories_html", label: "Categories", fieldtype: "HTML", options: category_html },
                     { fieldname: "sources_html", label: "Sources", fieldtype: "HTML", options: source_html }
                 ],

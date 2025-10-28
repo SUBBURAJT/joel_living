@@ -1,5 +1,6 @@
 {
  "actions": [],
+ "autoname": "format:AM-{MM}-{###}",
  "creation": "2025-10-22 21:16:36.179023",
  "doctype": "DocType",
  "engine": "InnoDB",
@@ -76,10 +77,11 @@
  "hide_toolbar": 1,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-10-22 21:16:36.179023",
+ "modified": "2025-10-28 20:24:44.311680",
  "modified_by": "Administrator",
  "module": "Joel Living",
  "name": "Admin Message",
+ "naming_rule": "Expression",
  "owner": "Administrator",
  "permissions": [
   {

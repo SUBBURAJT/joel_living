@@ -1,0 +1,86 @@
+{
+ "actions": [],
+ "autoname": "prompt",
+ "creation": "2025-10-22 21:02:22.654257",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "title",
+  "column_break_ghcy",
+  "send_date",
+  "section_break_aywl",
+  "content",
+  "recipient",
+  "status"
+ ],
+ "fields": [
+  {
+   "fieldname": "title",
+   "fieldtype": "Data",
+   "label": "Title",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_ghcy",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "send_date",
+   "fieldtype": "Date",
+   "label": "Send Date",
+   "read_only": 1
+  },
+  {
+   "fieldname": "section_break_aywl",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "content",
+   "fieldtype": "Long Text",
+   "label": "Content",
+   "read_only": 1
+  },
+  {
+   "fieldname": "recipient",
+   "fieldtype": "Link",
+   "hidden": 1,
+   "label": "Recipient",
+   "options": "User"
+  },
+  {
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "hidden": 1,
+   "label": "Status",
+   "options": "Not Seen\nSeen"
+  }
+ ],
+ "grid_page_length": 50,
+ "hide_toolbar": 1,
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2025-10-28 21:32:50.809054",
+ "modified_by": "Administrator",
+ "module": "Joel Living",
+ "name": "Admin Message Inbox",
+ "naming_rule": "Set by user",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

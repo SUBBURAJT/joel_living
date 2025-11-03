@@ -7,6 +7,27 @@ from frappe.utils import now_datetime
 import re
 
 class AdminMessage(Document):
+    def before_save(self):
+        """Auto-populate recipients_display with names or emails"""
+        if self.send_to_all_users:
+            # Get all enabled users except sender & Guest
+            recipients = frappe.get_all(
+                "User",
+                filters={"enabled": 1, "user_type": "System User"},
+                pluck="full_name"
+            )
+            recipients = [r for r in recipients if r not in [frappe.session.user, "Guest"]]
+        else:
+            recipients = []
+            for r in self.get("recipients"):
+                # Try to use full name if available, else email
+                full_name = frappe.db.get_value("User", r.user, "full_name") or r.user
+                recipients.append(full_name)
+
+        # Set the display field
+        self.recipient_name = ", ".join(recipients[:5])  # show only first 5 if too long
+        if len(recipients) > 5:
+            self.recipient_name += f" (+{len(recipients) - 5} more)"
     def after_insert(self):
         """Triggered when the Admin Message is saved and confirmed"""
         print(self.__dict__)  # This will print the document's data

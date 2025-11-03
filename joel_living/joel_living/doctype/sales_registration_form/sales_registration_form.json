@@ -1,0 +1,455 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2025-11-03 22:13:17.350310",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "amended_from",
+  "client_information_tab",
+  "form_type",
+  "lead",
+  "first_name",
+  "last_name",
+  "email",
+  "main_phone_number",
+  "uae_phone_number",
+  "column_break_main_client",
+  "passport_number",
+  "passport_expiry_date",
+  "date_of_birth",
+  "passport_copy",
+  "address_demographics_section",
+  "home_address",
+  "uae_address",
+  "column_break_address",
+  "country_of_origin",
+  "country_of_residence",
+  "age_range",
+  "yearly_estimated_income",
+  "joint_owners_section",
+  "joint_owners",
+  "unit_sale_info_tab",
+  "unit_info_section",
+  "unit_sale_type",
+  "developer",
+  "project",
+  "unit_number",
+  "unit_type",
+  "column_break_unit",
+  "unit_area",
+  "unit_view",
+  "unit_floor",
+  "developer_sales_rep",
+  "pricing_docs_section",
+  "unit_price",
+  "booking_eoi_paid_amount",
+  "booking_form_upload",
+  "spa_upload",
+  "soa_upload",
+  "receipts",
+  "screening_kyc_tab",
+  "screening_section",
+  "screened_before_payment",
+  "screening_yes_section",
+  "screenshot_of_green_light",
+  "screening_no_section",
+  "screening_date_time",
+  "screening_result",
+  "reason_for_late_screening",
+  "final_screening_screenshot",
+  "kyc_section",
+  "main_client_kyc_date",
+  "main_client_kyc_file",
+  "remarks_files_tab",
+  "remarks_section",
+  "remarks",
+  "additional_files_section",
+  "additional_files"
+ ],
+ "fields": [
+  {
+   "fieldname": "amended_from",
+   "fieldtype": "Link",
+   "label": "Amended From",
+   "no_copy": 1,
+   "options": "Sales Registration Form",
+   "print_hide": 1,
+   "read_only": 1
+  },
+  {
+   "fieldname": "client_information_tab",
+   "fieldtype": "Tab Break",
+   "label": "Client Information"
+  },
+  {
+   "fieldname": "form_type",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Type of Register",
+   "options": "Expression of Interest (EOI)\nCompleted Sale",
+   "reqd": 1
+  },
+  {
+   "fieldname": "lead",
+   "fieldtype": "Link",
+   "label": "Lead",
+   "options": "Lead",
+   "read_only": 1
+  },
+  {
+   "fieldname": "first_name",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "First Name",
+   "reqd": 1
+  },
+  {
+   "fieldname": "last_name",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Last Name",
+   "reqd": 1
+  },
+  {
+   "fieldname": "email",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Email",
+   "options": "Email",
+   "reqd": 1
+  },
+  {
+   "fieldname": "main_phone_number",
+   "fieldtype": "Phone",
+   "label": "Main Phone Number",
+   "reqd": 1
+  },
+  {
+   "fieldname": "uae_phone_number",
+   "fieldtype": "Data",
+   "label": "UAE Phone Number"
+  },
+  {
+   "fieldname": "column_break_main_client",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "passport_number",
+   "fieldtype": "Data",
+   "label": "Passport Number",
+   "reqd": 1
+  },
+  {
+   "fieldname": "passport_expiry_date",
+   "fieldtype": "Date",
+   "label": "Passport Expiry Date",
+   "reqd": 1
+  },
+  {
+   "fieldname": "date_of_birth",
+   "fieldtype": "Date",
+   "label": "Date of Birth",
+   "reqd": 1
+  },
+  {
+   "fieldname": "passport_copy",
+   "fieldtype": "Attach",
+   "label": "Passport Copy",
+   "reqd": 1
+  },
+  {
+   "fieldname": "address_demographics_section",
+   "fieldtype": "Section Break",
+   "label": "Address & Demographics"
+  },
+  {
+   "fieldname": "home_address",
+   "fieldtype": "Small Text",
+   "label": "Home Address",
+   "reqd": 1
+  },
+  {
+   "fieldname": "uae_address",
+   "fieldtype": "Small Text",
+   "label": "Address in UAE"
+  },
+  {
+   "fieldname": "column_break_address",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "country_of_origin",
+   "fieldtype": "Link",
+   "label": "Country of Origin",
+   "options": "Country",
+   "reqd": 1
+  },
+  {
+   "fieldname": "country_of_residence",
+   "fieldtype": "Link",
+   "label": "Country of Residence",
+   "options": "Country",
+   "reqd": 1
+  },
+  {
+   "fieldname": "age_range",
+   "fieldtype": "Select",
+   "label": "Age Range",
+   "options": "21\u201329\n30\u201345\n46\u201355\n56\u201370\n+70",
+   "reqd": 1
+  },
+  {
+   "fieldname": "yearly_estimated_income",
+   "fieldtype": "Currency",
+   "label": "Yearly Estimated Income (AED)",
+   "reqd": 1
+  },
+  {
+   "fieldname": "joint_owners_section",
+   "fieldtype": "Section Break",
+   "label": "Joint Owners"
+  },
+  {
+   "fieldname": "joint_owners",
+   "fieldtype": "Table",
+   "label": "Joint Owners",
+   "options": "Sales Registration Joint Owner"
+  },
+  {
+   "fieldname": "unit_sale_info_tab",
+   "fieldtype": "Tab Break",
+   "label": "Unit & Sale Information"
+  },
+  {
+   "fieldname": "unit_info_section",
+   "fieldtype": "Section Break",
+   "label": "Unit Information"
+  },
+  {
+   "fieldname": "unit_sale_type",
+   "fieldtype": "Select",
+   "label": "Unit Category",
+   "options": "Off-Plan\nSecondary",
+   "reqd": 1
+  },
+  {
+   "fieldname": "developer",
+   "fieldtype": "Link",
+   "label": "Developer",
+   "options": "Developer",
+   "reqd": 1
+  },
+  {
+   "fieldname": "project",
+   "fieldtype": "Link",
+   "label": "Project",
+   "options": "Project List",
+   "reqd": 1
+  },
+  {
+   "fieldname": "unit_number",
+   "fieldtype": "Data",
+   "label": "Unit Number",
+   "reqd": 1
+  },
+  {
+   "fieldname": "unit_type",
+   "fieldtype": "Data",
+   "label": "Unit Type (e.g., 1BR, Studio)",
+   "reqd": 1
+  },
+  {
+   "fieldname": "column_break_unit",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "unit_area",
+   "fieldtype": "Float",
+   "label": "Unit Area (SQFT)",
+   "reqd": 1
+  },
+  {
+   "fieldname": "unit_view",
+   "fieldtype": "Data",
+   "label": "Unit View",
+   "reqd": 1
+  },
+  {
+   "fieldname": "unit_floor",
+   "fieldtype": "Select",
+   "label": "Unit Floor",
+   "reqd": 1
+  },
+  {
+   "fieldname": "developer_sales_rep",
+   "fieldtype": "Link",
+   "label": "Developer Sales Representative",
+   "options": "User"
+  },
+  {
+   "fieldname": "pricing_docs_section",
+   "fieldtype": "Section Break",
+   "label": "Pricing & Documents"
+  },
+  {
+   "fieldname": "unit_price",
+   "fieldtype": "Currency",
+   "label": "Unit Price (AED)",
+   "reqd": 1
+  },
+  {
+   "fieldname": "booking_eoi_paid_amount",
+   "fieldtype": "Currency",
+   "label": "Booking/EOI Paid Amount (AED)",
+   "reqd": 1
+  },
+  {
+   "fieldname": "booking_form_upload",
+   "fieldtype": "Attach",
+   "label": "Booking Form Upload"
+  },
+  {
+   "fieldname": "spa_upload",
+   "fieldtype": "Attach",
+   "label": "SPA Upload"
+  },
+  {
+   "fieldname": "soa_upload",
+   "fieldtype": "Attach",
+   "label": "SOA Upload"
+  },
+  {
+   "fieldname": "receipts",
+   "fieldtype": "Table",
+   "label": "Receipts",
+   "options": "Sales Registration Receipt"
+  },
+  {
+   "fieldname": "screening_kyc_tab",
+   "fieldtype": "Tab Break",
+   "label": "Screening & KYC"
+  },
+  {
+   "fieldname": "screening_section",
+   "fieldtype": "Section Break",
+   "label": "Client Screening"
+  },
+  {
+   "fieldname": "screened_before_payment",
+   "fieldtype": "Select",
+   "label": "Client Screened Before Payment?",
+   "options": "Yes\nNo",
+   "reqd": 1
+  },
+  {
+   "depends_on": "eval:doc.screened_before_payment=='Yes'",
+   "fieldname": "screening_yes_section",
+   "fieldtype": "Section Break",
+   "label": "Details (Screened Before)"
+  },
+  {
+   "fieldname": "screenshot_of_green_light",
+   "fieldtype": "Attach",
+   "label": "Screenshot of Green Light"
+  },
+  {
+   "depends_on": "eval:doc.screened_before_payment=='No'",
+   "fieldname": "screening_no_section",
+   "fieldtype": "Section Break",
+   "label": "Details (Screened After)"
+  },
+  {
+   "fieldname": "screening_date_time",
+   "fieldtype": "Datetime",
+   "label": "Date & Time of Screening"
+  },
+  {
+   "fieldname": "screening_result",
+   "fieldtype": "Select",
+   "label": "Result",
+   "options": "Green\nRed"
+  },
+  {
+   "fieldname": "reason_for_late_screening",
+   "fieldtype": "Small Text",
+   "label": "Reason for Late Screening"
+  },
+  {
+   "fieldname": "final_screening_screenshot",
+   "fieldtype": "Attach",
+   "label": "Final Screening Screenshot"
+  },
+  {
+   "fieldname": "kyc_section",
+   "fieldtype": "Section Break",
+   "label": "KYC Documents"
+  },
+  {
+   "fieldname": "main_client_kyc_date",
+   "fieldtype": "Date",
+   "label": "Main Client - Date of KYC Entry",
+   "reqd": 1
+  },
+  {
+   "fieldname": "main_client_kyc_file",
+   "fieldtype": "Attach",
+   "label": "Main Client - KYC File Upload",
+   "reqd": 1
+  },
+  {
+   "fieldname": "remarks_files_tab",
+   "fieldtype": "Tab Break",
+   "label": "Remarks & Files"
+  },
+  {
+   "fieldname": "remarks_section",
+   "fieldtype": "Section Break",
+   "label": "Remarks"
+  },
+  {
+   "fieldname": "remarks",
+   "fieldtype": "Table",
+   "label": "Remarks",
+   "options": "Sales Registration Remark"
+  },
+  {
+   "fieldname": "additional_files_section",
+   "fieldtype": "Section Break",
+   "label": "Additional Files"
+  },
+  {
+   "fieldname": "additional_files",
+   "fieldtype": "Table",
+   "label": "Additional Files",
+   "options": "Sales Registration Additional File"
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2025-11-03 23:54:47.496895",
+ "modified_by": "Administrator",
+ "module": "Joel Living",
+ "name": "Sales Registration Form",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "rows_threshold_for_grid_search": 20,
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

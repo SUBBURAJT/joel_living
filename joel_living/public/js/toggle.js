@@ -76,62 +76,82 @@ function handleToggle(e) {
 //         });
 
 // });
-
 $(document).ready(function () {
-	
-	// Force private uploads for Sales Agent
-	if (frappe.session.user !== "Administrator") {
-		if (frappe.user_roles.includes("Sales Agent")) {
-			console;
-			$(".search-bar").hide();
-			$(document).off("keydown.frappe");
-		}
-	}
 
-	// Override FileUploader to force private uploads
-	const OrigFileUploader = frappe.ui.FileUploader;
-	frappe.ui.FileUploader = class CustomFileUploader extends OrigFileUploader {
-		constructor(opts) {
-			opts.is_private = 1;
-			opts.make_attachments_public = 0;
-			super(opts);
-		}
-	};
+    // ======================================================
+    // 1️⃣  Restrict UI for Sales Agent
+    // ======================================================
+    if (frappe.session.user !== "Administrator") {
+        if (frappe.user_roles.includes("Sales Agent")) {
+            $(".search-bar").hide(); // Hide search bar
+            $(document).off("keydown.frappe"); // Disable keyboard shortcuts
+        }
+    }
 
-	// Function to show only "My Device" and hide private/public buttons
-	function cleanFileUploadModal(modal) {
-		const $modal = $(modal);
+    // ======================================================
+    // 2️⃣  Override FileUploader (Force Private Uploads)
+    // ======================================================
+    frappe.after_ajax(() => {
+        if (!frappe.ui.FileUploader) {
+            console.warn("⚠️ frappe.ui.FileUploader not yet available.");
+            return;
+        }
 
-		// Hide private checkbox
-		$modal.find("label.frappe-checkbox:has(input[type=checkbox])").hide();
+        const OrigFileUploader = frappe.ui.FileUploader;
 
-		// Hide footer buttons
-		$modal.find(".modal-footer .btn-modal-secondary").hide();
+        frappe.ui.FileUploader = class CustomFileUploader extends OrigFileUploader {
+            constructor(opts) {
+                opts.is_private = 1;
+                opts.make_attachments_public = 0;
+                super(opts);
+            }
+        };
+    });
 
-		// Show only "My Device" button
-		$modal.find(".btn-file-upload").each(function () {
-			const btnText = $(this).find("div.mt-1").text().trim().toLowerCase();
-			$(this).toggle(btnText === "my device");
-		});
-	}
+    // ======================================================
+    // 3️⃣  Clean File Upload Modal UI
+    // ======================================================
+    function cleanFileUploadModal(modal) {
+        const $modal = $(modal);
 
-	// Use MutationObserver on the modal body to catch Vue re-renders
-	$(document).on("shown.bs.modal", ".modal", function () {
-		const modal = this;
+        // Only modify File Uploader modals
+        if (!$modal.find(".file-uploader").length) {
+            return; // Skip other modals like Confirm, Assign, etc.
+        }
 
-		// Initial clean-up
-		cleanFileUploadModal(modal);
+        // Hide private checkbox
+        $modal.find("label.frappe-checkbox:has(input[type=checkbox])").hide();
 
-		// Observe changes inside modal body (for re-renders)
-		const observer = new MutationObserver(() => cleanFileUploadModal(modal));
-		observer.observe(modal, { childList: true, subtree: true });
+        // Hide footer secondary buttons (not needed in file upload)
+        $modal.find(".modal-footer .btn-modal-secondary").hide();
 
-		// Stop observing when modal is hidden
-		$(modal).on("hidden.bs.modal", function () {
-			observer.disconnect();
-		});
-	});
+        // Show only "My Device" button
+        $modal.find(".btn-file-upload").each(function () {
+            const btnText = $(this).find("div.mt-1").text().trim().toLowerCase();
+            $(this).toggle(btnText === "my device");
+        });
+    }
+
+    // ======================================================
+    // 4️⃣  Observe File Upload Modals only
+    // ======================================================
+    $(document).on("shown.bs.modal", ".modal:has(.file-uploader)", function () {
+        const modal = this;
+
+        // Initial clean-up
+        cleanFileUploadModal(modal);
+
+        // Observe changes inside modal body (for Vue re-renders)
+        const observer = new MutationObserver(() => cleanFileUploadModal(modal));
+        observer.observe(modal, { childList: true, subtree: true });
+
+        // Stop observing when modal is closed
+        $(modal).on("hidden.bs.modal", function () {
+            observer.disconnect();
+        });
+    });
 });
+
 
 
 

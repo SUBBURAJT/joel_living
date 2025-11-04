@@ -844,14 +844,13 @@ def check_for_existing_sales_form(lead_name):
     Checks if a 'Sales Completion Form' for a given Lead already exists.
     Returns the name of the form if it exists, otherwise returns None.
     """
-    return frappe.db.exists("Sales Completion Form", {"lead_id": lead_name})
+    return frappe.db.exists("Sales Registration Form", {"lead": lead_name})
 
 
 
 
 
 ################# sales registration form #################
-
 
 import frappe
 import json # Used to handle data from the client script
@@ -866,85 +865,113 @@ def create_sales_registration(lead_name, data):
     :param data: A JSON string of the form data from the dialog.
     """
     try:
-        # The data from JS comes as a dictionary (or a JSON string that Frappe auto-converts)
-        form_data = data if isinstance(data, dict) else json.loads(data)
+        # 1. The data from JS comes as a dictionary (or a JSON string that Frappe auto-converts)
+        form_data = data if isinstance(data, dict) else frappe.parse_json(data)
 
-        # Create a new document for "Sales Registration Form"
+        # 2. Create a new document for "Sales Registration Form"
         doc = frappe.new_doc("Sales Registration Form")
-
-        # --- I. MAP MAIN CLIENT & UNIT FIELDS (DIRECT MAPPING) ---
-        # Map fields from the dialog (keys) to the Doctype fields (attributes)
-        # Add all your doctype fields here. The key in form_data.get('key')
-        # must match the 'fieldname' from your make_control() call in JS.
-        
-        # Client Info Tab
         doc.lead = lead_name
-        doc.form_type = form_data.get('form_type')
-        doc.first_name = form_data.get('first_name')
-        doc.last_name = form_data.get('last_name')
-        doc.email = form_data.get('email')
-        doc.main_phone_number = form_data.get('main_phone_number')
-        doc.uae_phone_number = form_data.get('uae_phone_number')
-        doc.passport_number = form_data.get('passport_number')
-        doc.passport_expiry_date = form_data.get('passport_expiry_date')
-        doc.date_of_birth = form_data.get('date_of_birth')
-        doc.passport_copy = form_data.get('passport_copy')
-        doc.home_address = form_data.get('home_address')
-        doc.uae_address = form_data.get('uae_address')
-        doc.country_of_origin = form_data.get('country_of_origin')
-        doc.country_of_residence = form_data.get('country_of_residence')
-        doc.age_range = form_data.get('age_range')
-        doc.yearly_estimated_income = form_data.get('yearly_estimated_income')
 
+        # --- I. MAP MAIN CLIENT & UNIT FIELDS (DIRECT MAPPING & CONDITIONAL FILTERING) ---
+        
+        # General Fields (Mandatory, no specific conditional logic needed other than basic setting)
+        # Using .get() or " or None" is critical here for missing data points from JS where Frappe validation might be confused
+        
+        doc.form_type = form_data.get('form_type') or None
+        doc.first_name = form_data.get('first_name') or None
+        doc.last_name = form_data.get('last_name') or None
+        doc.email = form_data.get('email') or None
+        doc.main_phone_number = form_data.get('main_phone_number') or None
+        doc.uae_phone_number = form_data.get('uae_phone_number') or None
+        doc.passport_number = form_data.get('passport_number') or None
+        doc.passport_expiry_date = form_data.get('passport_expiry_date') or None
+        doc.date_of_birth = form_data.get('date_of_birth') or None
+        doc.passport_copy = form_data.get('passport_copy') or None
+        doc.home_address = form_data.get('home_address') or None
+        doc.uae_address = form_data.get('uae_address') or None
+        doc.country_of_origin = form_data.get('country_of_origin') or None
+        doc.country_of_residence = form_data.get('country_of_residence') or None
+        doc.age_range = form_data.get('age_range') or None
+        doc.yearly_estimated_income = form_data.get('yearly_estimated_income') or None
+        
         # Unit & Sale Info Tab
-        doc.unit_sale_type = form_data.get('unit_sale_type')
-        doc.developer = form_data.get('developer')
-        doc.project = form_data.get('project')
-        doc.developer_sales_rep = form_data.get('developer_sales_rep')
-        doc.unit_number = form_data.get('unit_number')
-        doc.unit_type = form_data.get('unit_type')
-        doc.unit_price = form_data.get('unit_price')
-        doc.unit_area = form_data.get('unit_area')
-        doc.unit_view = form_data.get('unit_view')
-        doc.unit_floor = form_data.get('unit_floor')
-        doc.booking_eoi_paid_amount = form_data.get('booking_eoi_paid_amount')
-        doc.booking_form_upload = form_data.get('booking_form_upload')
-        doc.spa_upload = form_data.get('spa_upload')
-        doc.soa_upload = form_data.get('soa_upload')
+        doc.unit_sale_type = form_data.get('unit_sale_type') or None
+        doc.developer = form_data.get('developer') or None
+        doc.project = form_data.get('project') or None
+        doc.developer_sales_rep = form_data.get('developer_sales_rep') or None
+        doc.unit_number = form_data.get('unit_number') or None
+        doc.unit_type = form_data.get('unit_type') or None
+        doc.unit_price = form_data.get('unit_price') or None
+        doc.unit_area = form_data.get('unit_area') or None
+        doc.unit_view = form_data.get('unit_view') or None
+        doc.unit_floor = form_data.get('unit_floor') or None
+        doc.booking_eoi_paid_amount = form_data.get('booking_eoi_paid_amount') or None
+        doc.booking_form_upload = form_data.get('booking_form_upload') or None
+        doc.spa_upload = form_data.get('spa_upload') or None
+        doc.soa_upload = form_data.get('soa_upload') or None
 
         # Screening & KYC Tab
-        doc.screened_before_payment = form_data.get('screened_before_payment')
-        if doc.screened_before_payment == 'Yes':
-            doc.screenshot_of_green_light = form_data.get('screenshot_of_green_light')
-        else:
-            doc.screening_date_time = form_data.get('screening_date_time')
-            doc.screening_result = form_data.get('screening_result')
-            doc.reason_for_late_screening = form_data.get('reason_for_late_screening')
-            doc.final_screening_screenshot = form_data.get('final_screening_screenshot')
+        doc.screened_before_payment = form_data.get('screened_before_payment') or None
         
-        doc.main_client_kyc_date = form_data.get('main_client_kyc_date')
-        doc.main_client_kyc_file = form_data.get('main_client_kyc_file')
+        # Aggressive Conditional Field Clearing: Prevent Server-Side Mandatory Check Errors
+        if doc.screened_before_payment == 'Yes':
+            # ONLY map the required 'Yes' field(s). Clear 'No' fields.
+            doc.screenshot_of_green_light = form_data.get('screenshot_of_green_light') or None
+            doc.screening_date_time = None
+            doc.screening_result = None
+            doc.reason_for_late_screening = None
+            doc.final_screening_screenshot = None
+        elif doc.screened_before_payment == 'No':
+            # ONLY map the required 'No' fields. Clear 'Yes' fields.
+            doc.screenshot_of_green_light = None
+            doc.screening_date_time = form_data.get('screening_date_time') or None
+            doc.screening_result = form_data.get('screening_result') or None
+            doc.reason_for_late_screening = form_data.get('reason_for_late_screening') or None
+            doc.final_screening_screenshot = form_data.get('final_screening_screenshot') or None
+        else:
+            # If nothing selected, clear all conditional fields to avoid validation errors for both paths.
+            doc.screenshot_of_green_light = None
+            doc.screening_date_time = None
+            doc.screening_result = None
+            doc.reason_for_late_screening = None
+            doc.final_screening_screenshot = None
+
+        doc.main_client_kyc_date = form_data.get('main_client_kyc_date') or None
+        doc.main_client_kyc_file = form_data.get('main_client_kyc_file') or None
         
         # --- II. MAP DYNAMIC/CHILD TABLE FIELDS (JOINT OWNERS) ---
-        num_joint_owners = int(form_data.get('extra_joint_owners', 0))
-
+        
+        # Fix TypeError: extra_joint_owners from JS will be null if untouched.
+        raw_num_joint_owners = form_data.get('extra_joint_owners')
+        num_joint_owners = int(raw_num_joint_owners) if raw_num_joint_owners not in [None, ''] else 0
+        
+        # Prepare Joint Owners
+        joint_owners_list = []
         for i in range(num_joint_owners):
             prefix = f'jo{i}_'
             
-            # Append a new row to the 'joint_owners' child table
-            doc.append('joint_owners', {
-                'first_name': form_data.get(f'{prefix}first_name'),
-                'last_name': form_data.get(f'{prefix}last_name'),
-                'email': form_data.get(f'{prefix}email'),
-                'main_phone_number': form_data.get(f'{prefix}main_phone_number'),
-                'passport_number': form_data.get(f'{prefix}passport_number'),
-                'passport_expiry_date': form_data.get(f'{prefix}passport_expiry_date'),
-                'date_of_birth': form_data.get(f'{prefix}date_of_birth'),
-                'passport_copy': form_data.get(f'{prefix}passport_copy'),
-                'home_address': form_data.get(f'{prefix}home_address'),
-                'kyc_date': form_data.get(f'{prefix}kyc_date'),
-                'kyc_file': form_data.get(f'{prefix}kyc_file'),
+            # The JS code ensures all these mandatory fields are filled if the owner count > 0
+            joint_owners_list.append({
+                'first_name': form_data.get(f'{prefix}first_name') or None,
+                'last_name': form_data.get(f'{prefix}last_name') or None,
+                'email': form_data.get(f'{prefix}email') or None,
+                'main_phone_number': form_data.get(f'{prefix}main_phone_number') or None,
+                'uae_phone_number': form_data.get(f'{prefix}uae_phone_number') or None, # Added missing field
+                'passport_number': form_data.get(f'{prefix}passport_number') or None,
+                'passport_expiry_date': form_data.get(f'{prefix}passport_expiry_date') or None,
+                'date_of_birth': form_data.get(f'{prefix}date_of_birth') or None,
+                'passport_copy': form_data.get(f'{prefix}passport_copy') or None,
+                'home_address': form_data.get(f'{prefix}home_address') or None,
+                'uae_address': form_data.get(f'{prefix}uae_address') or None, # Added missing field
+                'country_of_origin': form_data.get(f'{prefix}country_of_origin') or None, # Added missing field
+                'country_of_residence': form_data.get(f'{prefix}country_of_residence') or None, # Added missing field
+                'age_range': form_data.get(f'{prefix}age_range') or None, # Added missing field
+                'yearly_estimated_income': form_data.get(f'{prefix}yearly_estimated_income') or None, # Added missing field
+                'kyc_date': form_data.get(f'{prefix}kyc_date') or None,
+                'kyc_file': form_data.get(f'{prefix}kyc_file') or None,
             })
+            
+        doc.set('joint_owners', joint_owners_list) # Use doc.set for a clear list setting
 
         # Insert the document into the database
         doc.insert(ignore_permissions=True)
@@ -952,36 +979,43 @@ def create_sales_registration(lead_name, data):
         # Return the name of the newly created document
         return doc.name
 
+    except frappe.MandatoryError as e:
+        # CRITICAL FIX: The Python error contains the entire list, so re-raise it
+        # so the browser handles the error object correctly and finds the list of fields.
+        frappe.throw(f"Mandatory fields are missing or not correctly mapped in server API: {str(e)}", title="Submission Failed")
+        
     except Exception as e:
         frappe.log_error(frappe.get_traceback(), "Sales Registration Creation Failed")
-        raise e
-
-
-
-# In file: joel_living/joel_living/utils.py
-
-import frappe
+        frappe.throw(str(e)) # Generic error re-raise
 
 @frappe.whitelist()
 def get_project_floor_details(project_name):
-	"""
-	Given the name of a 'Project List' document, fetches the number of floors
-	and whether it includes a mezzanine floor.
+    """
+    Given the name of a 'Project List' document, fetches the number of floors
+    and whether it includes a mezzanine floor and a ground floor.
 
-	:param project_name: The name of the project to look up.
-	:return: A dictionary with 'no_of_floors' and 'include_mezzanine_floor', or None.
-	"""
-	# First, a safety check to ensure the doctype and document exist.
-	if not project_name or not frappe.db.exists("Project List", project_name):
-		return None
+    :param project_name: The name of the project to look up.
+    :return: A dictionary with 'no_of_floors', 'include_mezzanine_floor', and 'include_ground_floor'.
+    """
+    if not project_name or not frappe.db.exists("Project List", project_name):
+        # Return a dictionary with 0s/False defaults if project is not found or project_name is None
+        return {
+            "no_of_floors": 0,
+            "include_mezzanine_floor": 0,
+            "include_ground_floor": 0
+        }
 
-	# Fetch the two required fields from the database for the given project.
-	# The as_dict=1 argument returns a convenient dictionary.
-	details = frappe.get_value(
-		"Project List",
-		project_name,
-		["no_of_floors", "include_mezzanine_floor"],
-		as_dict=1
-	)
-	
-	return details
+    details = frappe.get_value(
+        "Project List",
+        project_name,
+        ["no_of_floors", "include_mezzanine_floor", "include_ground_floor"],
+        as_dict=1
+    )
+    if details is None:
+        return {
+            "no_of_floors": 0,
+            "include_mezzanine_floor": 0,
+            "include_ground_floor": 0
+        }
+
+    return details

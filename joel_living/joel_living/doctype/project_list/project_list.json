@@ -1,14 +1,15 @@
 {
  "actions": [],
- "allow_rename": 1,
- "autoname": "field:project_name",
+ "autoname": "autoincrement",
  "creation": "2025-11-03 23:40:30.910295",
  "doctype": "DocType",
  "engine": "InnoDB",
  "field_order": [
   "project_name",
   "no_of_floors",
-  "include_mezzanine_floor"
+  "column_break_ekmv",
+  "include_mezzanine_floor",
+  "include_ground_floor"
  ],
  "fields": [
   {
@@ -27,16 +28,26 @@
    "fieldname": "include_mezzanine_floor",
    "fieldtype": "Check",
    "label": "Include mezzanine Floor"
+  },
+  {
+   "default": "0",
+   "fieldname": "include_ground_floor",
+   "fieldtype": "Check",
+   "label": "Include Ground Floor"
+  },
+  {
+   "fieldname": "column_break_ekmv",
+   "fieldtype": "Column Break"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-11-03 23:40:30.910295",
+ "modified": "2025-11-04 22:12:17.659683",
  "modified_by": "Administrator",
  "module": "Joel Living",
  "name": "Project List",
- "naming_rule": "By fieldname",
+ "naming_rule": "Autoincrement",
  "owner": "Administrator",
  "permissions": [
   {
@@ -54,7 +65,9 @@
  ],
  "row_format": "Dynamic",
  "rows_threshold_for_grid_search": 20,
+ "show_title_field_in_link": 1,
  "sort_field": "modified",
  "sort_order": "DESC",
- "states": []
+ "states": [],
+ "title_field": "project_name"
 }

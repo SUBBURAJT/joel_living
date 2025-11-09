@@ -1,6 +1,6 @@
 {
  "actions": [],
- "allow_rename": 1,
+ "autoname": "autoincrement",
  "creation": "2025-11-03 22:13:17.350310",
  "doctype": "DocType",
  "engine": "InnoDB",
@@ -19,6 +19,13 @@
   "passport_expiry_date",
   "date_of_birth",
   "passport_copy",
+  "status",
+  "rejection_reason",
+  "rejected_fields_json",
+  "rejection_count",
+  "commission_amount",
+  "commission_percentage",
+  "last_rejected_fields_json",
   "address_demographics_section",
   "home_address",
   "uae_address",
@@ -48,6 +55,8 @@
   "spa_upload",
   "soa_upload",
   "receipts",
+  "booking_form_signed",
+  "spa_signed",
   "screening_kyc_tab",
   "screening_section",
   "screened_before_payment",
@@ -65,7 +74,9 @@
   "remarks_section",
   "remarks",
   "additional_files_section",
-  "additional_files"
+  "additional_files",
+  "fine_details_section",
+  "sales_registration_fines"
  ],
  "fields": [
   {
@@ -120,6 +131,7 @@
    "reqd": 1
   },
   {
+   "default": "+91-",
    "fieldname": "main_phone_number",
    "fieldtype": "Phone",
    "label": "Main Phone Number",
@@ -423,15 +435,75 @@
    "fieldtype": "Table",
    "label": "Additional Files",
    "options": "Sales Registration Additional File"
+  },
+  {
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "label": "Status",
+   "options": "Draft\nAwaiting Review\nApproved\nRejected"
+  },
+  {
+   "fieldname": "rejection_reason",
+   "fieldtype": "Small Text",
+   "label": "Rejection Reason"
+  },
+  {
+   "fieldname": "rejection_count",
+   "fieldtype": "Int",
+   "label": "Rejection Count"
+  },
+  {
+   "fieldname": "commission_amount",
+   "fieldtype": "Currency",
+   "label": "Commission Amount"
+  },
+  {
+   "fieldname": "commission_percentage",
+   "fieldtype": "Data",
+   "label": "Commission Percentage "
+  },
+  {
+   "fieldname": "booking_form_signed",
+   "fieldtype": "Select",
+   "label": "Booking Form Signed",
+   "options": "Yes\nNo"
+  },
+  {
+   "fieldname": "spa_signed",
+   "fieldtype": "Select",
+   "label": "SPA Signed",
+   "options": "Yes\nNo"
+  },
+  {
+   "fieldname": "fine_details_section",
+   "fieldtype": "Section Break",
+   "label": "Fine Details"
+  },
+  {
+   "fieldname": "sales_registration_fines",
+   "fieldtype": "Table",
+   "label": "Sales Registration Fines",
+   "options": "Sales Registration Form Fine"
+  },
+  {
+   "fieldname": "rejected_fields_json",
+   "fieldtype": "Small Text",
+   "label": "Rejected Fields"
+  },
+  {
+   "fieldname": "last_rejected_fields_json",
+   "fieldtype": "Small Text",
+   "label": "Last Rejected Fields Json"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-11-03 23:54:47.496895",
+ "modified": "2025-11-09 16:02:32.252492",
  "modified_by": "Administrator",
  "module": "Joel Living",
  "name": "Sales Registration Form",
+ "naming_rule": "Autoincrement",
  "owner": "Administrator",
  "permissions": [
   {

@@ -39,7 +39,7 @@ class WorkflowOverride extends frappe.ui.form.States {
 
 
 
-                                    if (d.action === "Close") {
+                                    if (d.action === "Sales Completed") {
                                         // This is the new validation check
                                         frappe.call({
                                             method: "joel_living.custom_lead.check_for_existing_sales_form", // Dot path to your python function
@@ -52,7 +52,7 @@ class WorkflowOverride extends frappe.ui.form.States {
                                                     frappe.msgprint({
                                                         title: __('Form Already Exists'),
                                                         indicator: 'info',
-                                                        message: __("A Sales Completion Form {0} already exists for this lead and is pending approval.", [`<a href="/app/sales-completion-form/${r.message}" target="_blank">${r.message}</a>`])
+                                                        message: __("A Sales Completion Form {0} already exists for this lead and is pending approval.", [`<a href="/app/sales-registration-form/${r.message}" target="_blank">${r.message}</a>`])
                                                     });
                                                 } else {
                                                     // No form exists, so proceed with showing the dialog.
@@ -108,89 +108,1452 @@ class WorkflowOverride extends frappe.ui.form.States {
     }
 
 
+// show_sales_completion_dialog() {
+//     const me = this;
+//     const lead = me.frm.doc;
+//     let controls = {}; 
+
+//     // --- DRAFT MANAGEMENT (no change) ---
+//     const DRAFT_KEY = `sales_reg_draft_${frappe.session.user}_${lead.name}`;
+//     const save_draft = () => {
+//         const values = {};
+//         for (let key in controls) {
+//             if (controls[key] && controls[key].get_value) {
+//                 const val = controls[key].get_value();
+//                 if (val || key === 'extra_joint_owners' || key === 'unit_floor') { 
+//                      values[key] = val; 
+//                 }
+//             }
+//         }
+//         if (Object.keys(values).length > 0) {
+//             localStorage.setItem(DRAFT_KEY, JSON.stringify(values));
+//         }
+//     };
+//     const clear_draft = () => {
+//         localStorage.removeItem(DRAFT_KEY);
+//     };
+
+//     const load_draft = () => {
+//         const draft_data = localStorage.getItem(DRAFT_KEY);
+//         let loaded = false;
+//         if (draft_data) {
+//             const values = JSON.parse(draft_data);
+            
+//             setTimeout(() => {
+//                 for (let key in values) {
+//                     if (controls[key] && controls[key].set_value) {
+//                         controls[key].set_value(values[key]);
+//                     }
+//                 }
+                
+//                 render_dynamic_fields();
+//                 if(controls.screened_before_payment) $(controls.screened_before_payment.input).trigger('change');
+//             }, 300);
+            
+//             loaded = true;
+//         } else {
+//              // NEW/CLEAN: ONLY apply data from the original Lead if no draft exists
+//              setTimeout(() => {
+//                 if (controls.first_name) controls.first_name.set_value(lead.first_name);
+//                 if (controls.last_name) controls.last_name.set_value(lead.last_name || lead.lead_name);
+//                 if (controls.email) controls.email.set_value(lead.email_id);
+//                 if (controls.main_phone_number) controls.main_phone_number.set_value(lead.mobile_no);
+//                 if (controls.country_of_residence) controls.country_of_residence.set_value(lead.country);
+                
+//                 if (controls.extra_joint_owners) controls.extra_joint_owners.set_value('0');
+//                 if (controls.screened_before_payment) controls.screened_before_payment.set_value('');
+                
+//                 render_dynamic_fields(); 
+//             }, 300);
+
+//         }
+
+//         return loaded;
+//     };
+    
+//     // Function to set up the Data field to visually appear as a locked +971 phone number
+//     const setup_uae_phone_data_control = (control) => {
+//         const $input = $(control.input);
+//         const prefix = '+971';
+        
+//         setTimeout(() => {
+//             let $input_group = $input.parent().is('.input-group') ? $input.parent() : null;
+            
+//             if ($input.val() && $input.val().startsWith(prefix)) {
+//                 $input.val($input.val().replace(prefix, ''));
+//             } else if (!$input.val()) {
+//                 $input.val(''); 
+//             }
+            
+//             if (!$input_group) {
+//                  $input.wrap('<div class="input-group" style="width: 100%;"></div>');
+//                  $input_group = $input.parent();
+//             }
+
+//             const $addon = $(`<span class="input-group-addon" style="font-weight: bold; background-color: #f7f9fa;">${prefix}</span>`);
+//             $input.before($addon);
+
+//             control.get_value = () => {
+//                 let value = $input.val().trim();
+//                 if (value && !value.startsWith(prefix)) {
+//                     return prefix + value;
+//                 } else if (value.startsWith(prefix)) {
+//                     return value;
+//                 }
+//                 return '';
+//             }
+//         }, 50); 
+//     }
+    
+//     // **********************************************
+//     // * Custom Validation Functions (unchanged logic)
+//     // **********************************************
+//     const validate_age = (date_string) => {
+//         if (!date_string) return { passed: true, message: '' };
+//         try {
+//             const today = moment();
+//             const birthDate = moment(date_string);
+//             const age = today.diff(birthDate, 'years');
+//             if (age >= 18) { return { passed: true, message: '' }; }
+//             return { passed: false, message: 'Client must be 18 years or older.' };
+//         } catch (e) {
+//             return { passed: false, message: 'Invalid date format for Date of Birth.' };
+//         }
+//     };
+    
+//     const validate_future_date = (date_string) => {
+//         if (!date_string) return { passed: true, message: '' };
+//         const now = moment().format('YYYY-MM-DD'); 
+//         if (date_string > now) { return { passed: true, message: '' }; }
+//         return { passed: false, message: 'Expiry Date must be a future date.' };
+//     };
+    
+//     const validate_passport_chars = (value) => {
+//         if (!value) return { passed: true, message: '' };
+//         if (/[^a-zA-Z0-9]/.test(value)) {
+//             return { passed: false, message: 'Passport Number cannot contain special characters.' };
+//         }
+//         return { passed: true, message: '' };
+//     }
+    
+//     // Global validation handler for individual controls - LOCAL ERROR DISPLAY (IMPROVED BLUR/CHANGE HANDLER)
+//     const attach_validation_onchange = (control, validation_func) => {
+//         if (!control) return;
+        
+//         let $elements_to_check = [];
+//         $elements_to_check.push($(control.input)); 
+//         if (control.fieldtype === 'Link') { $elements_to_check.push($(control.wrapper).find('.btn-link')); } 
+//         if (control.fieldtype === 'Attach') { $elements_to_check.push($(control.wrapper).find('.attach-button')); }
+//         if (control.fieldtype === 'Select' || control.fieldtype === 'Phone') { $elements_to_check.push($(control.select) || $(control.input)); }
+
+//         for (const $element of $elements_to_check) {
+//             $element.on('blur change', (e) => { 
+                
+//                 const is_attach = control.fieldtype === 'Attach';
+                
+//                 const value = control.get_value();
+                
+//                 const result = validation_func(value);
+//                 const $wrapper = $(control.wrapper);
+//                 $wrapper.find('.local-error-message').remove(); 
+                
+//                 // Determine target element for red border
+//                 const $target_border = is_attach ? $wrapper.find('.attach-button').closest('.input-with-feedback') : $(control.input).length ? $(control.input) : $wrapper.find('.control-input');
+//                 $target_border.css('border-color', ''); 
+
+//                 if (!result.passed) {
+//                     $wrapper.append(`<p class="local-error-message" style="color: red; font-size: 11px; margin-top: 5px;">${result.message}</p>`);
+//                     $target_border.css('border-color', 'red');
+//                 } else {
+//                      $wrapper.find('.control-label').css('color', 'inherit');
+//                 }
+//             });
+//         }
+//     }
+
+//     // **********************************************
+    
+//     // ** CUSTOM CLOSE CONFIRMATION DIALOG FUNCTION ** 
+//     const show_custom_close_confirmation = () => {
+//         save_draft(); 
+        
+//         const close_dialog = new frappe.ui.Dialog({
+//             title: __('Close Confirmation'),
+//             size: 'small',
+//             fields: [
+//                 {
+//                     fieldtype: 'HTML',
+//                     options: `
+//                         <div style="padding-bottom: 10px;">
+//                             <h4>${__('Unsaved changes detected. What would you like to do?')}</h4>
+//                         </div>
+//                         <div style="margin-top: 20px; text-align: right; width: 100%;">
+//                             <button id="discard-close-btn" class="btn btn-sm btn-default" style="margin-right: 10px;">
+//                                 ${__('Discard Data & Close')}
+//                             </button>
+//                             <button id="save-close-btn" class="btn btn-sm btn-primary">
+//                                 ${__('Save Draft & Close')}
+//                             </button>
+//                         </div>
+//                     `
+//                 }
+//             ],
+//             actions: [] 
+//         });
+
+//         close_dialog.$wrapper.on('click', '#save-close-btn', () => {
+//             save_draft(); 
+//             clearInterval(dialog.draft_saver); 
+//             close_dialog.hide();
+//             dialog.hide();
+//         });
+
+//         close_dialog.$wrapper.on('click', '#discard-close-btn', () => {
+//             clear_draft(); 
+//             clearInterval(dialog.draft_saver); 
+//             close_dialog.hide();
+//             dialog.hide();
+//         });
+
+//         if (close_dialog.modal_close) {
+//              close_dialog.modal_close.off('click').on('click', () => { close_dialog.hide() });
+//         } else {
+//              close_dialog.$wrapper.find('.modal-header .close').off('click').on('click', () => { close_dialog.hide() }); 
+//         }
+        
+//         close_dialog.show();
+//     }
+//     // **********************************************
+
+//     const dialog = new frappe.ui.Dialog({
+//         title: __("Create Sales Registration"),
+//         size: 'large',
+//         static: true, 
+//     });
+    
+//     // FIX 1: INCREASE DIALOG WIDTH
+//     dialog.get_full_width = true;
+//     dialog.$wrapper.find('.modal-dialog').css({
+//         'max-width': '90vw',
+//         'width': '90vw'
+//     });
+
+
+//     const wrapper = $(dialog.body);
+//     // REORGANIZED TABS HTML
+//     wrapper.html(`
+//         <div>
+//             <ul class="nav nav-tabs" role="tablist">
+//                 <li class="nav-item"><a class="nav-link active" data-target="#tab-client" href="#">1. Client Information</a></li>
+//                 <li class="nav-item"><a class="nav-link" data-target="#tab-joint-owners" href="#">2. Joint Owners</a></li> 
+//                 <li class="nav-item"><a class="nav-link" data-target="#tab-unit" href="#">3. Unit & Sale Details</a></li>
+//                 <li class="nav-item"><a class="nav-link" data-target="#tab-screening" href="#">4. Screening & KYC</a></li>
+//                 <li class="nav-item"><a class="nav-link" data-target="#tab-remarks" href="#">5. Remarks & Files</a></li>
+//             </ul>
+//             <div class="tab-content" style="padding-top: 15px;">
+//                 <!-- 1. Client Information (Main Client only) - 3 COLUMNS -->
+//                 <div class="tab-pane fade show active" id="tab-client" role="tabpanel">
+//                     <h4>Main Client Details</h4><hr><div class="row"><div class="col-md-4" id="client-col-1"></div><div class="col-md-4" id="client-col-2"></div><div class="col-md-4" id="client-col-3"></div><div class="col-md-12" id="client-col-4"></div></div>
+//                 </div>
+//                 <!-- 2. Joint Owners (Dedicated Tab) -->
+//                 <div class="tab-pane fade" id="tab-joint-owners" role="tabpanel"> 
+//                     <h4>Joint Owners</h4><hr><div id="joint-owners-section"></div>
+//                 </div>
+//                 <!-- 3. Unit & Sale Details - NOW 3 COLUMNS -->
+//                 <div class="tab-pane fade" id="tab-unit" role="tabpanel"><div class="row"><div class="col-md-4" id="unit-col-1"></div><div class="col-md-4" id="unit-col-2"></div><div class="col-md-4" id="unit-col-3"></div></div></div>
+//                 <!-- 4. Screening & KYC (includes Joint Owner KYC) -->
+//                 <div class="tab-pane fade" id="tab-screening" role="tabpanel">
+//                     <h4>Client Screening</h4><hr><div id="screening-section"></div>
+//                     <div id="screening-yes-section" class="mt-3" style="display:none;"><div class="row"><div class="col-md-6"></div></div></div>
+//                     <div id="screening-no-section" class="mt-3" style="display:none;"><div class="row"><div class="col-md-6"></div><div class="col-md-6"></div><div class="col-md-12"></div></div></div>
+//                     <h4 class="mt-4">Main Client KYC Uploads</h4><hr>
+//                     <div id="main-kyc-placeholder"></div>
+//                     <h4 class="mt-4">Joint Owners KYC Uploads</h4><hr><div id="joint-owners-kyc-placeholder"></div>
+//                 </div>
+//                 <!-- 5. Remarks & Files -->
+//                 <div class="tab-pane fade" id="tab-remarks" role="tabpanel"><h4>Remarks (Optional)</h4><hr><div id="remarks-section"></div><h4 class="mt-4">Additional Files (Optional)</h4><hr><div id="files-section" class="row"><div class="col-md-6"></div><div class="col-md-6"></div></div></div>
+//             </div>
+//         </div>
+//     `);
+    
+//     const make_control = (df, parent_id) => {
+//         const parent_element = wrapper.find(`#${parent_id}`);
+//         if (!parent_element.length) return;
+//         const control = frappe.ui.form.make_control({ df, parent: parent_element, render_input: true });
+//         controls[df.fieldname] = control;
+//         return control;
+//     };
+    
+//     // **********************************************
+//     // * Main Client Field Creation
+//     // **********************************************
+//     // Client Col 1
+//     make_control({ fieldname: 'form_type', label: 'Type of Register', fieldtype: 'Select', reqd: 1, options: ['Expression of Interest (EOI)', 'Completed Sale'] }, 'client-col-1');
+//     make_control({ fieldname: 'first_name', label: 'First Name', fieldtype: 'Data', reqd: 1 }, 'client-col-1');
+//     make_control({ fieldname: 'last_name', label: 'Last Name', fieldtype: 'Data', reqd: 1 }, 'client-col-1');
+//     make_control({ fieldname: 'email', label: 'Email', fieldtype: 'Data', options: 'Email', reqd: 1 }, 'client-col-1');
+//     const dob_control = make_control({ fieldname: 'date_of_birth', label: 'Date of Birth', fieldtype: 'Date', reqd: 1 }, 'client-col-1');
+//     attach_validation_onchange(dob_control, validate_age); 
+
+//     // Client Col 2
+//     const main_phone_control = make_control({ fieldname: 'main_phone_number', label: 'Main Phone Number', fieldtype: 'Phone', reqd: 1, options: 'AE' }, 'client-col-2'); 
+    
+//     const uae_phone_control = make_control({ fieldname: 'uae_phone_number', label: 'UAE Phone Number', fieldtype: 'Data', description: 'Fixed to +971 for UAE' }, 'client-col-2'); 
+//     setup_uae_phone_data_control(uae_phone_control); 
+    
+//     const passport_num_control = make_control({ fieldname: 'passport_number', label: 'Passport Number', fieldtype: 'Data', reqd: 1 }, 'client-col-2'); 
+//     attach_validation_onchange(passport_num_control, validate_passport_chars); 
+    
+//     const passport_expiry_control = make_control({ fieldname: 'passport_expiry_date', label: 'Passport Expiry Date', fieldtype: 'Date', reqd: 1 }, 'client-col-2');
+//     attach_validation_onchange(passport_expiry_control, validate_future_date); 
+    
+//     make_control({ fieldname: 'passport_copy', label: 'Passport Copy (PDF/JPG/PNG)', fieldtype: 'Attach', reqd: 1, options: { accepted_file_types: ['.pdf', '.jpg', '.jpeg', '.png'], show_preview: true } }, 'client-col-2');
+    
+//     // Client Col 3
+//     const country_origin_control = make_control({ fieldname: 'country_of_origin', label: 'Country of Origin', fieldtype: 'Link', options: 'Country', reqd: 1 }, 'client-col-3');
+//     attach_validation_onchange(country_origin_control, (v) => ({ passed: v, message: 'Country is required' })); 
+    
+//     const country_residence_control = make_control({ fieldname: 'country_of_residence', label: 'Country of Residence', fieldtype: 'Link', options: 'Country', reqd: 1 }, 'client-col-3');
+//     attach_validation_onchange(country_residence_control, (v) => ({ passed: v, message: 'Country is required' })); 
+    
+//     make_control({ fieldname: 'age_range', label: 'Age Range', fieldtype: 'Select', options: ['\n21–29', '30–45', '46–55', '56–70', '+70'], reqd: 1 }, 'client-col-3');
+//     make_control({ fieldname: 'yearly_estimated_income', label: 'Yearly Estimated Income (AED)', fieldtype: 'Currency', reqd: 1 }, 'client-col-3');
+    
+//     // Client Col 4 (12 column address fields)
+//     make_control({ fieldname: 'home_address', label: 'Home Address', fieldtype: 'Small Text', reqd: 1 }, 'client-col-4');
+//     make_control({ fieldname: 'uae_address', label: 'Address in UAE (Optional)', fieldtype: 'Small Text' }, 'client-col-4');
+    
+//     // Unit Details fields... 
+//     make_control({ fieldname: 'unit_sale_type', label: 'Unit Category', fieldtype: 'Select', options: ['Off-Plan', 'Secondary'], reqd: 1 }, 'unit-col-1');
+//     make_control({ fieldname: 'developer', label: 'Developer', fieldtype: 'Link', options: 'Developer', reqd: 1 }, 'unit-col-1');
+//     const project_control = make_control({
+//         fieldname: 'project',
+//         label: 'Project',
+//         fieldtype: 'Link',
+//         options: 'Project List', 
+//         reqd: 1,
+//         onchange: () => {
+//             const project_name = project_control.get_value();
+//             const unit_floor_control = controls['unit_floor'];
+//             unit_floor_control.set_value("");
+//             unit_floor_control.df.options = [];
+//             unit_floor_control.refresh();
+//             if (!project_name) { return; }
+
+//             frappe.call({
+//                 method: "joel_living.custom_lead.get_project_floor_details", 
+//                 args: { project_name: project_name },
+//                 callback: function(r) {
+//                     if (r.message) {
+//                         const details = r.message;
+//                         const number_of_floors_raw = details.no_of_floors || 0;
+//                         const has_mezzanine = details.include_mezzanine_floor; 
+//                         const has_ground_floor = details.include_ground_floor; 
+                        
+//                         let floor_options = [];
+//                         let numbered_floor_count = number_of_floors_raw;
+
+//                         if (has_ground_floor) { floor_options.push('G'); numbered_floor_count--; }
+//                         if (has_mezzanine) { floor_options.push('M'); numbered_floor_count--; }
+                        
+//                         if (numbered_floor_count < 0) { numbered_floor_count = 0; }
+
+//                         for (let i = 1; i <= numbered_floor_count; i++) { floor_options.push(String(i)); }
+
+//                         unit_floor_control.df.options = floor_options;
+//                         unit_floor_control.refresh();
+//                     }
+//                 }
+//             });
+//         }
+//     }, 'unit-col-1');   
+    
+//     // Unit Col 2
+//     make_control({ fieldname: 'developer_sales_rep', label: 'Developer Sales Representative', fieldtype: 'Link', options: 'User' }, 'unit-col-2');
+//     make_control({ fieldname: 'unit_number', label: 'Unit Number', fieldtype: 'Data', reqd: 1 }, 'unit-col-2');
+//     make_control({ fieldname: 'unit_type', label: 'Unit Type (e.g., 1BR, Studio)', fieldtype: 'Data', reqd: 1 }, 'unit-col-2');
+//     make_control({ fieldname: 'unit_price', label: 'Unit Price (AED)', fieldtype: 'Currency', reqd: 1 }, 'unit-col-2');
+//     make_control({ fieldname: 'unit_area', label: 'Unit Area (SQFT)', fieldtype: 'Float', reqd: 1 }, 'unit-col-2');
+
+//     // Unit Col 3
+//     make_control({ fieldname: 'unit_view', label: 'Unit View', fieldtype: 'Data', reqd: 1 }, 'unit-col-3');
+//     make_control({ fieldname: 'unit_floor', label: 'Unit Floor', fieldtype: 'Select', reqd: 1 }, 'unit-col-3');    
+//     make_control({ fieldname: 'booking_eoi_paid_amount', label: 'Booking/EOI Paid Amount (AED)', fieldtype: 'Currency', reqd: 1 }, 'unit-col-3');
+//     make_control({ fieldname: 'booking_form_upload', label: 'Booking Form Upload', fieldtype: 'Attach' }, 'unit-col-3');
+//     make_control({ fieldname: 'spa_upload', label: 'SPA Upload', fieldtype: 'Attach' }, 'unit-col-3');
+//     make_control({ fieldname: 'soa_upload', label: 'SOA Upload', fieldtype: 'Attach' }, 'unit-col-3');
+
+//     // Screening fields... (unchanged)
+//     const screening_select = make_control({
+//         fieldname: 'screened_before_payment',
+//         label: 'Is the client screened by admin before the first payment?',
+//         fieldtype: 'Select', options: ['', '\nYes', '\nNo'], reqd: 1
+//     }, 'screening-section');
+
+//     make_control({ fieldname: 'screenshot_of_green_light', label: 'Screenshot of green light...', fieldtype: 'Attach', reqd: 1 }, 'screening-yes-section .col-md-6');
+//     make_control({ fieldname: 'screening_date_time', label: 'Date and time of screening', fieldtype: 'Datetime', reqd: 1 }, 'screening-no-section .col-md-6:first-child');
+//     make_control({ fieldname: 'screening_result', label: 'Results of screening', fieldtype: 'Select', options: ['\nGreen', '\nRed'], reqd: 1 }, 'screening-no-section .col-md-6:last-child');
+//     make_control({ fieldname: 'reason_for_late_screening', label: 'Reason for late screening', fieldtype: 'Small Text', reqd: 1 }, 'screening-no-section .col-md-12');
+//     make_control({ fieldname: 'final_screening_screenshot', label: 'Screenshot of final screening result...', fieldtype: 'Attach', reqd: 1 }, 'screening-no-section .col-md-12');
+
+  
+//     $(screening_select.input).on('change', function() {
+//         const val = screening_select.get_value();
+//         let show_yes = false, show_no = false;
+//         if (val) {
+//             const trimmed_val = val.trim();
+//             if (trimmed_val === 'Yes') { show_yes = true; }
+//             else if (trimmed_val === 'No') { show_no = true; }
+//         }
+//         wrapper.find('#screening-yes-section').toggle(show_yes);
+//         wrapper.find('#screening-no-section').toggle(show_no);
+//     });
+//     // Remarks & Files fields... (unchanged)
+//     make_control({ fieldname: 'remark_title', label: 'Title', fieldtype: 'Data' }, 'remarks-section');
+//     make_control({ fieldname: 'remark_description', label: 'Description', fieldtype: 'Small Text' }, 'remarks-section');
+//     make_control({ fieldname: 'remark_files', label: 'Attachments (up to 3 files)', fieldtype: 'Attach' }, 'remarks-section');
+//     make_control({ fieldname: 'additional_file_title', label: 'File Title', fieldtype: 'Data' }, 'files-section .col-md-6:first-child');
+//     make_control({ fieldname: 'additional_file_upload', label: 'File Upload', fieldtype: 'Attach' }, 'files-section .col-md-6:last-child');
+    
+
+    
+//     // RENDER DYNAMIC FIELDS
+//     const render_dynamic_fields = () => {
+//         const new_count = parseInt(controls.extra_joint_owners.get_value(), 10) || 0;
+//         const owners_placeholder = wrapper.find('#joint-owners-placeholder');
+//         const kyc_placeholder = wrapper.find('#joint-owners-kyc-placeholder');
+//         const current_count = owners_placeholder.find('.panel-group').length;
+
+//         if (new_count > current_count) {
+//             for (let i = current_count; i < new_count; i++) {
+//                 const owner_num = i + 1, prefix = `jo${i}`;
+                
+//                 // *** Collapsible Accordion Setup (for Owner Info) ***
+//                 const collapse_id = `jo-collapse-${i}`;
+//                 const owner_section = $(`
+//                     <div class="panel-group" id="jo-accordion-${i}" role="tablist" aria-multiselectable="true">
+//                         <div class="panel panel-default">
+//                             <div class="panel-heading" role="tab" id="heading-${collapse_id}" style="padding: 10px; cursor: pointer; background-color: #f7f9fa; border-bottom: 1px solid #d1d8dd;">
+//                                 <h5 class="panel-title" data-toggle="collapse" data-parent="#jo-accordion-${i}" href="#${collapse_id}" aria-expanded="true" aria-controls="${collapse_id}">
+//                                     Joint Owner ${owner_num} Details
+//                                 </h5>
+//                             </div>
+//                             <div id="${collapse_id}" class="panel-collapse collapse in joint-owner-wrapper" role="tabpanel" aria-labelledby="heading-${collapse_id}" data-idx="${i}" style="padding:15px; border:1px solid #d1d8dd; border-top: none;">
+//                                 <div class="row">
+//                                     <div class="col-md-4" id="${prefix}_col1"></div>
+//                                     <div class="col-md-4" id="${prefix}_col2"></div>
+//                                     <div class="col-md-4" id="${prefix}_col3"></div>
+//                                     <div class="col-md-12" id="${prefix}_col4"></div>
+//                                 </div>
+//                             </div>
+//                         </div>
+//                     </div>
+//                 `);
+//                 owners_placeholder.append(owner_section);
+//                 // * End Collapsible Setup *
+
+//                 // *** KYC Section Setup (in Screening & KYC Tab) ***
+//                 const kyc_html = $(`<div class="kyc-section joint-owner-kyc-wrapper row mt-3" data-idx="${i}"><div class="col-md-12"><h6>KYC for Joint Owner ${owner_num}</h6></div><div class="col-md-6" id="${prefix}_kyc_date"></div><div class="col-md-6" id="${prefix}_kyc_file"></div></div>`);
+//                 kyc_placeholder.append(kyc_html);
+                
+//                 // Column 1
+//                 make_control({ fieldname: `${prefix}_first_name`, label: 'First Name', fieldtype: 'Data', reqd: 1 }, `${prefix}_col1`);
+//                 make_control({ fieldname: `${prefix}_last_name`, label: 'Last Name', fieldtype: 'Data', reqd: 1 }, `${prefix}_col1`);
+//                 make_control({ fieldname: `${prefix}_email`, label: 'Email', fieldtype: 'Data', options: 'Email', reqd: 1 }, `${prefix}_col1`);
+                
+//                 const jo_dob_control = make_control({ fieldname: `${prefix}_date_of_birth`, label: 'Date of Birth', fieldtype: 'Date', reqd: 1 }, `${prefix}_col1`);
+//                 attach_validation_onchange(jo_dob_control, validate_age); 
+
+//                 // Column 2
+//                 make_control({ fieldname: `${prefix}_main_phone_number`, label: 'Main Phone Number', fieldtype: 'Phone', reqd: 1, options: 'AE' }, `${prefix}_col2`);
+
+//                 const jo_uae_phone_control = make_control({ fieldname: `${prefix}_uae_phone_number`, label: 'UAE Phone Number', fieldtype: 'Data', description: 'Fixed to +971 for UAE' }, `${prefix}_col2`);
+//                 setup_uae_phone_data_control(jo_uae_phone_control);
+                
+//                 const jo_passport_num_control = make_control({ fieldname: `${prefix}_passport_number`, label: 'Passport Number', fieldtype: 'Data', reqd: 1 }, `${prefix}_col2`);
+//                 attach_validation_onchange(jo_passport_num_control, validate_passport_chars);
+                
+//                 const jo_passport_expiry_control = make_control({ fieldname: `${prefix}_passport_expiry_date`, label: 'Passport Expiry Date', fieldtype: 'Date', reqd: 1 }, `${prefix}_col2`);
+//                 attach_validation_onchange(jo_passport_expiry_control, validate_future_date);
+                
+//                 make_control({ fieldname: `${prefix}_passport_copy`, label: 'Passport Copy (PDF/JPG/PNG)', fieldtype: 'Attach', reqd: 1, options: { accepted_file_types: ['.pdf', '.jpg', '.jpeg', '.png'], show_preview: true } }, `${prefix}_col2`);
+
+//                 // Column 3
+//                 const jo_country_origin_control = make_control({ fieldname: `${prefix}_country_of_origin`, label: 'Country of Origin', fieldtype: 'Link', options: 'Country', reqd: 1 }, `${prefix}_col3`);
+//                 attach_validation_onchange(jo_country_origin_control, (v) => ({ passed: v, message: 'Country is required' }));
+
+//                 const jo_country_residence_control = make_control({ fieldname: `${prefix}_country_of_residence`, label: 'Country of Residence', fieldtype: 'Link', options: 'Country', reqd: 1 }, `${prefix}_col3`);
+//                 attach_validation_onchange(jo_country_residence_control, (v) => ({ passed: v, message: 'Country is required' }));
+
+//                 make_control({ fieldname: `${prefix}_age_range`, label: 'Age Range', fieldtype: 'Select', reqd: 1, options: ['\n21–29', '30–45', '46–55', '56–70', '+70'], reqd: 1 }, `${prefix}_col3`);
+//                 make_control({ fieldname: `${prefix}_yearly_estimated_income`, label: 'Yearly Estimated Income (AED)', fieldtype: 'Currency', reqd: 1 }, `${prefix}_col3`);
+
+//                 // Column 4 (12 column address)
+//                 make_control({ fieldname: `${prefix}_home_address`, label: 'Home Address', fieldtype: 'Small Text', reqd: 1 }, `${prefix}_col4`);
+//                 make_control({ fieldname: `${prefix}_uae_address`, label: 'Address in UAE (Optional)', fieldtype: 'Small Text' }, `${prefix}_col4`);
+                
+//                 // KYC placeholders (in the Screening & KYC Tab)
+//                 make_control({ fieldname: `${prefix}_kyc_date`, label: 'Date of KYC Entry', fieldtype: 'Date', reqd: 1 }, `${prefix}_kyc_date`);
+//                 make_control({ fieldname: `${prefix}_kyc_file`, label: 'KYC File Upload', fieldtype: 'Attach', reqd: 1, options: { accepted_file_types: ['.pdf', '.jpg', '.jpeg', '.png'], show_preview: true } }, `${prefix}_kyc_file`);
+                
+//                 // Collapse the section by default
+//                 owner_section.find(`#${collapse_id}`).collapse('hide');
+//             }
+//         }
+//         else if (new_count < current_count) {
+//             for (let i = new_count; i < current_count; i++) {
+//                 const prefix = `jo${i}`;
+//                 owners_placeholder.find(`#jo-accordion-${i}`).remove();
+//                 kyc_placeholder.find(`.joint-owner-kyc-wrapper[data-idx="${i}"]`).remove();
+                
+//                 const fields_to_remove = [
+//                     `${prefix}_first_name`, `${prefix}_last_name`, `${prefix}_email`, `${prefix}_main_phone_number`, `${prefix}_uae_phone_number`,
+//                     `${prefix}_passport_number`, `${prefix}_passport_expiry_date`, `${prefix}_date_of_birth`, `${prefix}_passport_copy`, 
+//                     `${prefix}_country_of_origin`, `${prefix}_country_of_residence`, `${prefix}_age_range`, `${prefix}_yearly_estimated_income`,
+//                     `${prefix}_home_address`, `${prefix}_uae_address`,
+//                     `${prefix}_kyc_date`, `${prefix}_kyc_file`
+//                 ];
+//                 fields_to_remove.forEach(fieldname => { delete controls[fieldname]; });
+//             }
+//         }
+//     };
+//     // --- Live validation cleanup (for all field types) ---
+// function attachLiveValidation(control) {
+//     const $wrapper = $(control.wrapper);
+//     const $input = $(control.input);
+
+//     // For basic input fields (Data, Date, Int, Float, etc.)
+//     if (["Data", "Date", "Int", "Float", "Small Text", "Text", "Text Editor"].includes(control.df.fieldtype)) {
+//         $input.off("input.fieldvalidate change.fieldvalidate")
+//             .on("input.fieldvalidate change.fieldvalidate", function () {
+//                 if ($(this).val() && String($(this).val()).trim() !== "") {
+//                     $wrapper.find('.field-error').remove();
+//                 }
+//             });
+//     }
+
+//     // For Select fields
+//     if (control.df.fieldtype === "Select") {
+//         $wrapper.find("select").off("change.fieldvalidate").on("change.fieldvalidate", function () {
+//             if ($(this).val()) {
+//                 $wrapper.find('.field-error').remove();
+//             }
+//         });
+//     }
+
+//     // For Link fields — use Frappe's event hooks safely
+//     if (control.df.fieldtype === "Link") {
+//         control.df.onchange = () => {
+//             const val = control.get_value();
+//             if (val && val.trim() !== "") {
+//                 $wrapper.find('.field-error').remove();
+//             }
+//         };
+//     }
+
+//     // For Attach fields
+//     if (control.df.fieldtype === "Attach") {
+//         control.$wrapper.off("attach_complete.fieldvalidate").on("attach_complete.fieldvalidate", function () {
+//             $wrapper.find('.field-error').remove();
+//         });
+//     }
+// }
+
+
+//     // --- UI EVENT HANDLERS & BUTTONS ---
+
+//     // 1. Manually Inject Close Button HTML into Header (Top Right Button)
+//     const close_button_html = `
+//         <a href="#" class="btn btn-xs btn-default" id="custom-close-dialog" 
+//            style="position: absolute; right: 15px; top: 12px; color: #1e88e5; border-color: #bbdefb; background-color: #e3f2fd; font-weight: bold; padding: 4px 10px;">
+//             Close
+//         </a>`;
+//     dialog.header.find('.modal-title').closest('.modal-header').append(close_button_html);
+    
+//     // 2. Attach action to the new manual close button - Dual Confirmation (calls functional small dialog)
+//     dialog.header.find('#custom-close-dialog').on('click', (e) => {
+//         e.preventDefault();
+//         show_custom_close_confirmation();
+//     });
+//     // This MUST also be updated to ensure the single browser prompt doesn't overwrite your custom dialog on native X-click
+//     dialog.header.find('.modal-close').off('click').on('click', (e) => { 
+//         e.preventDefault();
+//         show_custom_close_confirmation();
+//     });
+
+//     // CRITICAL FIX FOR TAB SWITCHING RELIABILITY (Replace default bootstrap logic with custom)
+//     wrapper.find('.nav-link').on('click', function(e) { 
+//         e.preventDefault(); 
+//         const target = $(this).data('target'); 
+
+//         // Remove active class from all links and content
+//         wrapper.find('.nav-link').removeClass('active'); 
+//         wrapper.find('.tab-pane').removeClass('show active'); 
+        
+//         // Add active class to clicked link and target content
+//         $(this).addClass('active'); 
+//         wrapper.find(target).addClass('show active'); 
+
+//         // Force scroll to top of the dialog after tab change
+//         frappe.utils.scroll_to(dialog.body, true, 0);
+//     });
+    
+//     // Dialog cleanup logic
+//     dialog.on_hide = () => { clearInterval(dialog.draft_saver); };
+//     dialog.draft_saver = setInterval(save_draft, 3000);
+    
+//     // 3. Define the bottom button (Create Registration) - Primary Action
+//     dialog.set_primary_action(__("Create Registration"), () => {
+//     const values = {};
+//     let first_invalid_control = null;
+
+//     // Clear any previous error messages
+//     wrapper.find(".field-error").remove();
+
+//     // Loop through all controls in dialog
+//     for (let key in controls) {
+//         if (controls[key]) {
+//             const control = controls[key];
+//             const $input = $(control.input);
+//             const value = control.get_value();
+
+//             // Validate required fields (even in hidden tabs)
+//             if (control.df.reqd && (value === undefined || value === null || value === "")) {
+//     const $error = $('<div class="field-error" style="color:red; font-size:12px; margin-top:4px;">This field is required.</div>');
+//     if (!$(control.wrapper).find(".field-error").length) {
+//         $(control.wrapper).append($error);
+//     }
+
+//     if (!first_invalid_control) {
+//         first_invalid_control = control;
+//     }
+
+//     attachLiveValidation(control);  // <--- NEW LINE
+// }
+
+
+//             values[key] = value;
+//         }
+//     }
+
+//     // Handle first invalid control
+//     if (first_invalid_control) {
+//         const control = first_invalid_control;
+
+//         // --- Switch tab if field is inside a tab ---
+//         const tab_pane = $(control.wrapper).closest('.tab-pane');
+//         if (tab_pane.length) {
+//             const tab_id = tab_pane.attr('id');
+//             const tab_link = wrapper.find(`.nav-link[data-target="#${tab_id}"]`);
+//             if (tab_link.length && !tab_link.hasClass('active')) {
+//                 tab_link.trigger('click');
+//             }
+//         }
+
+//         // --- Scroll & focus ---
+//         frappe.utils.scroll_to($(control.wrapper), true, 150);
+//         control.set_focus();
+
+//         // Stop submission
+//         frappe.show_alert({
+//             message: __("Please fill all required fields before proceeding."),
+//             indicator: "red",
+//         });
+
+//         return;
+//     }
+
+//     // --- If all required fields filled, proceed to backend ---
+//     const primary_btn = dialog.get_primary_btn();
+//     primary_btn.prop('disabled', true);
+//     frappe.call({
+//         method: "joel_living.custom_lead.create_sales_registration",
+//         args: {
+//             lead_name: me.frm.doc.name,
+//             data: values,
+//         },
+//         callback: (r) => {
+//             if (r.message) {
+//                 localStorage.removeItem(DRAFT_KEY);
+//                 dialog.hide();
+//                 frappe.set_route('Form', 'Sales Completion Form', r.message);
+//                 me.frm.reload_doc();
+//             }
+//         },
+//         always: () => {
+//             primary_btn.prop('disabled', false);
+//         },
+//     });
+// });
+
+
+
+
+//     dialog.show();
+
+//     // Create Main Client KYC only ONCE in its own safe placeholder
+//     make_control({ fieldname: `main_client_kyc_date`, label: 'Date of KYC Entry', fieldtype: 'Date', reqd: 1 }, 'main-kyc-placeholder');
+//     make_control({ fieldname: `main_client_kyc_file`, label: 'KYC File Upload', fieldtype: 'Attach', reqd: 1, options: { accepted_file_types: ['.pdf', '.jpg', '.jpeg', '.png'], show_preview: true } }, 'main-kyc-placeholder');
+    
+//     // Create the joint owner select control and attach its event handler
+//     const joint_owners_wrapper = wrapper.find('#joint-owners-section');
+//     joint_owners_wrapper.append('<div class="row"><div class="col-md-4" id="joint-owners-select"></div></div><div id="joint-owners-placeholder"></div>');
+//     make_control({fieldname: 'extra_joint_owners', label: 'Number of Additional Joint Owners', fieldtype: 'Select', options: '0\n1\n2\n3'}, 'joint-owners-select');
+//     controls.extra_joint_owners.df.onchange = render_dynamic_fields;
+
+//     // Load initial data trigger (calls load_draft and render_dynamic_fields)
+//     load_draft();
+    
+//     render_dynamic_fields(); // Final initial render call
+// }
+
 show_sales_completion_dialog() {
     const me = this;
     const lead = me.frm.doc;
-    let controls = {}; // This object will hold all our manually created field controls.
+    let controls = {}; 
+     let receipts_data = [];
 
     // --- DRAFT MANAGEMENT ---
     const DRAFT_KEY = `sales_reg_draft_${frappe.session.user}_${lead.name}`;
+    
+    // START OF FIX: REVISED save_draft function (ensures '0', 'null', '' states for critical fields are saved)
+    // const save_draft = () => {
+    //     const values = {};
+    //     for (let key in controls) {
+    //         if (controls[key] && controls[key].get_value) {
+    //             let val = controls[key].get_value();
+    //             const control = controls[key];
+    //             if (control.df.fieldtype === 'Table') {
+    //                 // A table's value is an array of rows. Save it if there are any rows.
+    //                 if (Array.isArray(val) && val.length > 0) {
+    //                     values[key] = val;
+    //                 }
+    //                 // Use 'continue' to skip the generic handling below for this field.
+    //                 continue;
+    //             }
+    //             // Keys that represent a global UI state which must save an empty/zero state.
+    //             // extra_joint_owners (select), unit_floor (select options populated by project), screened_before_payment (select)
+    //             const is_ui_state_key = key === 'extra_joint_owners' || key === 'unit_floor' || key === 'screened_before_payment'; 
+                
+    //             // Keys that are for Joint Owner data - must be saved if they exist in `controls`.
+    //             const is_joint_owner_key = key.startsWith('jo') && key.split('_').length > 1;
+
+    //             // Step 1: Normalize val: get_value() can return null or undefined for unset Selects. Convert to "" for saving consistency.
+    //             if (val === null || val === undefined) {
+    //                  val = '';
+    //             }
+
+    //             // Step 2: Check for value existence - Save if meaningful OR it is a mandatory state/JO field.
+    //             const is_meaningful = (val !== '' && (String(val).length > 0) || (Array.isArray(val) && val.length > 0));
+
+    //             // Save if a meaningful value exists OR the key is a dynamic state/joint owner field.
+    //             if (is_meaningful || is_ui_state_key || is_joint_owner_key)
+    //             { 
+    //                  // Since we converted null/undefined to '', we can just save 'val' directly.
+    //                  // It will save '0' or '1' (if selected), or '' (if empty).
+    //                  values[key] = val; 
+    //             }
+    //         }
+    //     }
+    //     console.log(values);
+    //     if (Object.keys(values).length > 0) {
+    //         localStorage.setItem(DRAFT_KEY, JSON.stringify(values));
+    //     }
+    // };
+    const get_receipt_values = () => {
+        const collected_data = [];
+        // Only collect from rows that are part of the table body (ignore header, buttons)
+        const $rows = wrapper.find('#receipts_table_placeholder table tbody tr').not('.no-data-row'); 
+
+        $rows.each(function() {
+            const $row = $(this);
+            // We use .get_value() here to leverage the frappe number and link control formatting 
+            // even though they're not frappe controls anymore - fall back to basic input value.
+            const date_val = $row.find('.receipts-date').val();
+            const amount_val = $row.find('.receipts-amount').val();
+            const proof_val = $row.find('.receipts-proof').val(); 
+            
+            // Only collect the row if at least one critical field has a value
+            if (date_val || amount_val || proof_val) {
+                 collected_data.push({
+                    receipt_date: date_val,
+                    receipt_amount: amount_val,
+                    receipt_proof: proof_val
+                 });
+            }
+        });
+
+        return collected_data;
+    };
     const save_draft = () => {
         const values = {};
         for (let key in controls) {
-            if (controls[key] && controls[key].get_value) {
-                const val = controls[key].get_value();
-                if (val || key === 'extra_joint_owners') { values[key] = val; }
+            const control = controls[key];
+            if (control && control.get_value) {
+                if (key === 'receipts') continue;
+                // --- SPECIAL HANDLING FOR TABLE FIELDS ---
+                // if (control.df.fieldtype === 'Table') {
+                //     const table_data = control.get_value();
+                //     if (Array.isArray(table_data) && table_data.length > 0) {
+                //         // Create a "clean" array with only the necessary data
+                //         const clean_data = table_data.map(row => ({
+                //             receipt_date: row.receipt_date,
+                //             receipt_amount: row.receipt_amount,
+                //             receipt_proof: row.receipt_proof
+                //         }));
+                //         values[key] = clean_data;
+                //     }
+                //     continue; // Crucial to skip the other logic
+                // }
+                // --- END OF TABLE HANDLING ---
+
+                // Generic handling for all other field types
+                let val = control.get_value();
+                if (val === null || val === undefined) {
+                    val = '';
+                }
+
+                const is_meaningful = (String(val).length > 0) || (Array.isArray(val) && val.length > 0);
+                const is_ui_state_key = key === 'extra_joint_owners' || key === 'unit_floor' || key === 'screened_before_payment';
+                const is_joint_owner_key = key.startsWith('jo');
+
+                if (is_meaningful || is_ui_state_key || is_joint_owner_key) {
+                    values[key] = val;
+                }
             }
         }
+        // CRITICAL: Manually get and inject the custom table data.
+        const current_receipts_data = get_receipt_values();
+        if (current_receipts_data.length > 0) {
+            values.receipts = current_receipts_data;
+        }
+        // Only save to localStorage if there is data to save
         if (Object.keys(values).length > 0) {
             localStorage.setItem(DRAFT_KEY, JSON.stringify(values));
+        } else {
+            // If the form is empty, clear any old drafts
+            localStorage.removeItem(DRAFT_KEY);
         }
     };
+    // END OF REVISED save_draft function
+
+  
+    const clear_draft = () => {
+        localStorage.removeItem(DRAFT_KEY);
+    };
+ 
+    
     const load_draft = () => {
         const draft_data = localStorage.getItem(DRAFT_KEY);
+        let loaded = false;
+
         if (draft_data) {
             const values = JSON.parse(draft_data);
-            // console.log(values);
-            // Set the dropdown value first, as it affects what fields will be rendered.
-            if (values.extra_joint_owners) {
-                controls.extra_joint_owners.set_value(values.extra_joint_owners);
-            }
-            if (values.screened_before_payment) {
-                controls.screened_before_payment.set_value(values.screened_before_payment);
+            // Store receipts data from draft in a variable. It will be rendered later.
+           // CRITICAL: If receipts exist, populate the custom data array.
+            if (values.receipts && Array.isArray(values.receipts)) {
+                receipts_data = values.receipts; // This is where the draft data is loaded into our global manager array.
             }
 
-            // The data loading happens after a delay to ensure dynamic fields are ready.
+            // Primary Draft Load (delayed to allow controls to be created first)
             setTimeout(() => {
+                const is_project_in_draft = !!values.project;
+
                 for (let key in values) {
-                    if (controls[key] && controls[key].set_value) {
-                        controls[key].set_value(values[key]);
+                    if (key === 'receipts' || !controls[key] || !controls[key].set_value) {
+                        continue;
+                    }
+
+                    const control = controls[key];
+                    const original_onchange = control.df.onchange;
+
+                    // Temporarily disable onchange for Link fields to prevent premature triggers
+                    if (key === 'project' || control.fieldtype === 'Link') {
+                        control.df.onchange = null;
+                    }
+
+                    let value_to_set = values[key];
+
+                    // --- FIX FOR link.js ERROR ---
+                    // For Link fields, aggressively ensure the value is a string to prevent errors.
+                    // An empty string is safe; null, undefined, or other types are not.
+                    if (control.fieldtype === 'Link') {
+                        value_to_set = String(values[key] || '');
+                    }
+
+                    // Set value and restore onchange handler
+                    control.set_value(value_to_set);
+                    if (original_onchange) {
+                        control.df.onchange = original_onchange;
                     }
                 }
-                
-                render_dynamic_fields();
-                $(controls.screened_before_payment.input).trigger('change');
-            }, 300); // 300ms is a safe delay
 
-            return true;
+                // Manually trigger onchange for dynamic sections after their values are set
+                if (controls.extra_joint_owners && controls.extra_joint_owners.df.onchange) {
+                    controls.extra_joint_owners.df.onchange();
+                }
+
+                // If project was in draft, re-fetch floor details to populate the options
+                if (is_project_in_draft && controls.unit_floor) {
+                     frappe.call({
+                        method: "joel_living.custom_lead.get_project_floor_details",
+                        args: { project_name: values.project },
+                        callback: function(r) {
+                            if (r.message && controls.unit_floor) {
+                                 // (Your existing floor fetching logic here...)
+                                 const details = r.message;
+                                 let numbered_floor_count = details.no_of_floors || 0;
+                                 const has_mezzanine = details.include_mezzanine_floor;
+                                 const has_ground_floor = details.include_ground_floor;
+
+                                 let floor_options = [];
+                                 if (has_ground_floor) { floor_options.push('G'); numbered_floor_count--; }
+                                 if (has_mezzanine) { floor_options.push('M'); numbered_floor_count--; }
+                                 if (numbered_floor_count < 0) { numbered_floor_count = 0; }
+                                 for (let i = 1; i <= numbered_floor_count; i++) { floor_options.push(String(i)); }
+
+                                 controls.unit_floor.df.options = floor_options;
+                                 controls.unit_floor.refresh();
+                                 if (values.unit_floor) controls.unit_floor.set_value(values.unit_floor);
+                            }
+                        }
+                     });
+                }
+            }, 300);
+
+            // Secondary load for dynamically created Joint Owner fields
+            setTimeout(() => {
+                for (let key in values) {
+                    if (key.startsWith('jo') && controls[key] && controls[key].set_value) {
+                        const value_to_set = String(values[key] || '');
+                        controls[key].set_value(value_to_set);
+                    }
+                }
+                if(controls.screened_before_payment) $(controls.screened_before_payment.input).trigger('change');
+            }, 400);
+
+            loaded = true;
+        } else {
+             // Logic for a new, clean dialog when no draft exists
+             setTimeout(() => {
+                if (controls.first_name) controls.first_name.set_value(lead.first_name);
+                if (controls.last_name) controls.last_name.set_value(lead.last_name || lead.lead_name);
+                if (controls.email) controls.email.set_value(lead.email_id);
+                if (controls.main_phone_number && !controls.main_phone_number.get_value()) {
+                    controls.main_phone_number.set_value('+971-');
+                }
+                if (controls.country_of_residence) controls.country_of_residence.set_value(lead.country);
+                if (controls.extra_joint_owners) controls.extra_joint_owners.set_value('0');
+                if (controls.screened_before_payment) controls.screened_before_payment.set_value('');
+                render_dynamic_fields();
+            }, 300);
         }
-        return false;
+        return loaded;
     };
+
+
+
+
+
+
+    // const load_draft = () => {
+    //     const draft_data = localStorage.getItem(DRAFT_KEY);
+    //     console.log('draft_data', draft_data);
+    //     let loaded = false;
+    //     if (draft_data) {
+    //         const values = JSON.parse(draft_data);
+            
+    //         // Primary Draft Load (300ms delay) - Sets static fields and triggers dynamic control creation.
+    //         setTimeout(() => {
+    //             const is_project_in_draft = !!values.project;
+
+    //             // FIX 1: Project/Link Fields Draft Load Bug - Temporarily disable onchange
+    //             for (let key in values) {
+    //                 if (controls[key] && controls[key].set_value) {
+    //                     const control = controls[key];
+    //                     const original_onchange = control.df.onchange;
+
+    //                     if (key === 'project' || control.fieldtype === 'Link') {
+    //                         control.df.onchange = null;
+    //                     }
+                        
+    //                     let value_to_set = values[key];
+    //                     // Also include Phone field in standard text value normalization
+    //                     if (control.fieldtype === 'Select' || control.fieldtype === 'Data' || control.fieldtype === 'Link' || control.fieldtype === 'Phone') { 
+    //                          value_to_set = (values[key] === null || values[key] === undefined) ? '' : values[key];
+    //                     }
+                        
+    //                     // FIX: Add small delay for phone fields as suggested, to help external libraries init
+    //                     if (control.fieldtype === 'Phone') {
+    //                         setTimeout(() => { control.set_value(value_to_set); }, 100);
+    //                     } else {
+    //                         control.set_value(value_to_set);
+    //                     }
+
+
+    //                     if (original_onchange) {
+    //                          control.df.onchange = original_onchange;
+    //                     }
+    //                 }
+    //             }
+                
+    //             // --- FIX 2: FORCE RENDER JOINT OWNER SECTIONS ---
+    //             // Must be done AFTER setting the extra_joint_owners value (which happened in the loop above)
+    //             if (controls.extra_joint_owners && controls.extra_joint_owners.df.onchange) {
+    //                 // This calls render_dynamic_fields() to CREATE the joX_... controls
+    //                 controls.extra_joint_owners.df.onchange(); 
+    //             }
+    //             // ---------------------------------------------
+                
+                
+    //             // FIX 1 CONTINUED: Manually run floor fetch to re-establish unit_floor OPTIONS 
+    //             if (is_project_in_draft && controls.unit_floor) {
+    //                  frappe.call({
+    //                     method: "joel_living.custom_lead.get_project_floor_details", 
+    //                     args: { project_name: values.project },
+    //                     callback: function(r) {
+    //                         if (r.message && controls.unit_floor) {
+    //                              const details = r.message;
+    //                              let numbered_floor_count = details.no_of_floors || 0;
+    //                              const has_mezzanine = details.include_mezzanine_floor; 
+    //                              const has_ground_floor = details.include_ground_floor; 
+                                 
+    //                              let floor_options = [];
+    //                              if (has_ground_floor) { floor_options.push('G'); numbered_floor_count--; }
+    //                              if (has_mezzanine) { floor_options.push('M'); numbered_floor_count--; }
+    //                              if (numbered_floor_count < 0) { numbered_floor_count = 0; }
+    //                              for (let i = 1; i <= numbered_floor_count; i++) { floor_options.push(String(i)); }
+
+    //                              controls.unit_floor.df.options = floor_options;
+    //                              controls.unit_floor.refresh();
+    //                              if (values.unit_floor) controls.unit_floor.set_value(values.unit_floor);
+    //                         }
+    //                     }
+    //                  });
+    //             }
+                
+    //             // END FIX 1
+    //         }, 300); 
+
+    //         // START OF FIX: Rerun set_value for dynamic fields after a slight additional delay (400ms total)
+    //         setTimeout(() => {
+    //              for (let key in values) {
+    //                 // This populates the dynamic controls (joX_...) that were just rendered/created by the onchange call.
+    //                 if (key.startsWith('jo') && controls[key] && controls[key].set_value) {
+    //                      const value_to_set = (values[key] === null || values[key] === undefined) ? '' : values[key];
+    //                      controls[key].set_value(value_to_set);
+    //                 }
+    //             }
+                
+    //             // Force screen select change for UI toggle (even if field was empty)
+    //             if(controls.screened_before_payment) $(controls.screened_before_payment.input).trigger('change');
+                
+    //         }, 400); 
+    //         // END OF FIX
+            
+    //         loaded = true;
+    //     } else {
+    //          // NEW/CLEAN: ONLY apply data from the original Lead if no draft exists
+    //          setTimeout(() => {
+    //             if (controls.first_name) controls.first_name.set_value(lead.first_name);
+    //             if (controls.last_name) controls.last_name.set_value(lead.last_name || lead.lead_name);
+    //             if (controls.email) controls.email.set_value(lead.email_id);
+                
+    //             // IGNORE lead.mobile_no for Main Phone Control. Default is handled post-creation via setTimeout.
+    //             if (controls.main_phone_number && !controls.main_phone_number.get_value()) {
+    //                 controls.main_phone_number.set_value('+971-'); // Ensure the clean state gets the visual default
+    //             }
+                
+    //             if (controls.country_of_residence) controls.country_of_residence.set_value(lead.country);
+                
+    //             if (controls.extra_joint_owners) controls.extra_joint_owners.set_value('0');
+    //             if (controls.screened_before_payment) controls.screened_before_payment.set_value('');
+                
+    //             render_dynamic_fields(); 
+    //         }, 300);
+
+    //     }
+
+    //     return loaded;
+    // };
+    
+
+
+
+
+    const add_receipt_row = (draft_data = {}) => {
+        receipts_data.push({
+            receipt_date: draft_data.receipt_date || '',
+            receipt_amount: draft_data.receipt_amount || '',
+            receipt_proof: draft_data.receipt_proof || ''
+        });
+        render_receipt_rows(); // Re-render the HTML after adding new row
+    };
+    
+    const handle_input_change = ($input, row_index) => {
+        const field_name = $input.data('fieldname');
+        // Update the central JavaScript array which acts as the data source
+        if (receipts_data[row_index]) {
+            receipts_data[row_index][field_name] = $input.val();
+        }
+    };
+    
+    // Ensure this helper function is in your script's scope
+const getFileName = (url) => {
+    if (!url) return '';
+    return url.substring(url.lastIndexOf('/') + 1) || url;
+}
+
+// --- FINAL Corrected Core Custom Rendering Function with Link View ---
+const render_receipt_rows = () => {
+    const $placeholder = wrapper.find('#receipts_table_placeholder');
+    $placeholder.empty();
+
+    let table_html = `
+        <table class="table table-bordered frappe-list-sidebar custom-receipt-table" style="margin-top:15px; background: white;">
+            <thead>
+                <tr>
+                    <th style="width: 25%">Date *</th>
+                    <th style="width: 25%">Amount (AED) *</th>
+                    <th style="width: 35%">Proof of Payment *</th>
+                    <th style="width: 15%">Actions</th>
+                </tr>
+            </thead>
+            <tbody>`;
+
+    if (receipts_data.length === 0) {
+         table_html += `<tr class="no-data-row"><td colspan="4" class="text-muted text-center" style="font-style: italic;">No receipts added.</td></tr>`;
+    }
+
+    receipts_data.forEach((row, index) => {
+        const date_val = row.receipt_date || '';
+        const amount_val = row.receipt_amount || '';
+        const proof_val = row.receipt_proof || '';
+        
+        const file_name_display = getFileName(proof_val);
+
+        // --- NEW: HTML for File/Link display ---
+        let file_display_html;
+        if (proof_val) {
+            // If proof_val exists, render a clickable hyperlink
+            // The file path stored is typically an internal Frappe path like /files/image.png
+            // We prepend '/' just in case to ensure it's treated as a root path, and set target=_blank
+            const full_file_url = proof_val.startsWith('/') ? proof_val : ('/' + proof_val);
+            
+            file_display_html = `
+                <div style="margin-bottom: 5px;">
+                    <a href="${full_file_url}" target="_blank" class="receipts-file-link">${file_name_display}</a>
+                </div>
+            `;
+        } else {
+            // Otherwise, render a read-only empty label
+            file_display_html = `<input type="text" readonly class="form-control input-sm receipts-file-label" value="">`;
+        }
+
+
+        table_html += `
+            <tr data-index="${index}">
+                <td><input type="date" class="form-control input-sm receipts-input receipts-date" data-fieldname="receipt_date" value="${date_val}" ></td>
+                <td><input type="number" min="0" class="form-control input-sm receipts-input receipts-amount" data-fieldname="receipt_amount" value="${amount_val}"></td>
+                <td>
+                    <div class="input-group">
+                         ${file_display_html}
+                         <span class="input-group-btn" style="position: absolute; right: 0; top: 0;">
+                            <button class="btn btn-sm btn-default add-file-btn" data-fieldname="receipt_proof" type="button" data-index="${index}">Attach</button>
+                         </span>
+                         <!-- Hidden field to hold the actual URL/path -->
+                         <input type="hidden" class="receipts-proof" data-fieldname="receipt_proof" value="${proof_val}">
+                    </div>
+                </td>
+                <td>
+                    <button class="btn btn-xs btn-danger delete-row-btn" data-index="${index}">Delete</button>
+                </td>
+            </tr>
+        `;
+    });
+
+    table_html += `</tbody></table>
+                    <button class="btn btn-sm btn-default add-custom-row-btn">Add Row</button>`;
+
+    $placeholder.html(table_html);
+    
+    // --- Re-attach All Event Handlers ---
+    $placeholder.find('.add-custom-row-btn').off('click').on('click', () => add_receipt_row());
+    
+    $placeholder.find('.delete-row-btn').off('click').on('click', function() {
+        const index = parseInt($(this).data('index'));
+        receipts_data.splice(index, 1);
+        render_receipt_rows(); 
+    });
+    
+    // Update central data array on change
+    $placeholder.find('.receipts-input').off('change.sync blur.sync').on('change.sync blur.sync', function() {
+        const $input = $(this);
+        const index = parseInt($input.closest('tr').data('index'));
+        handle_input_change($input, index);
+    });
+    
+    // Logic for attach button
+    $placeholder.find('.add-file-btn').off('click').on('click', function() {
+        const $btn = $(this);
+        const index = parseInt($btn.data('index'));
+        frappe.prompt(
+            { label: __('Attach File'), fieldname: 'file_url', fieldtype: 'AttachImage'}, 
+            (values) => {
+                const file_url = values.file_url;
+                if (file_url) {
+                     const file_name_display = getFileName(file_url);
+                     
+                     // 1. Update the hidden URL input
+                     $btn.closest('tr').find('.receipts-proof').val(file_url);
+                     // 2. Update the central data array
+                     receipts_data[index].receipt_proof = file_url;
+                     // 3. Re-render the table to show the new clickable link instantly
+                     render_receipt_rows(); 
+                }
+            }, 
+            __('Attach Receipt Proof')
+        );
+    });
+};
+
+
+
+    // Function to set up the Data field to visually appear as a locked +971 phone number
+    const setup_uae_phone_data_control = (control) => {
+        const $input = $(control.input);
+        const prefix = '+971';
+        
+        setTimeout(() => {
+            let $input_group = $input.parent().is('.input-group') ? $input.parent() : null;
+            
+            if ($input.val() && $input.val().startsWith(prefix)) {
+                $input.val($input.val().replace(prefix, ''));
+            } else if (!$input.val()) {
+                $input.val(''); 
+            }
+            
+            if (!$input_group) {
+                 $input.wrap('<div class="input-group" style="width: 100%;"></div>');
+                 $input_group = $input.parent();
+            }
+
+            const $addon = $(`<span class="input-group-addon" style="font-weight: bold; background-color: #f7f9fa;">${prefix}</span>`);
+            $input.before($addon);
+
+            control.get_value = () => {
+                let value = $input.val().trim();
+                if (value && value !== prefix && !value.startsWith(prefix)) {
+                    return prefix + value;
+                } else if (value.startsWith(prefix)) {
+                    return value;
+                }
+                return '';
+            }
+        }, 50); 
+    }
+    
+    // **********************************************
+    // * Custom Validation Functions
+    // **********************************************
+    // const validate_age = (date_string) => {
+    //     if (!date_string) return { passed: true, message: '' };
+    //     try {
+    //         const today = moment();
+    //         const birthDate = moment(date_string);
+    //         const age = today.diff(birthDate, 'years');
+    //         if (age >= 18) { return { passed: true, message: '' }; }
+    //         return { passed: false, message: 'Client must be 18 years or older.' };
+    //     } catch (e) {
+    //         return { passed: false, message: 'Invalid date format for Date of Birth.' };
+    //     }
+    // };
+    
+    const validate_email = (value) => {
+        if (!value) return { passed: true, message: '' };
+        // Standard basic email regex
+        const email_regex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/; 
+        if (!email_regex.test(value)) {
+            return { passed: false, message: 'Please enter a valid email address.' };
+        }
+        return { passed: true, message: '' };
+    };
+    // Validate Future Date
+    const validate_future_date = (date_string) => {
+        if (!date_string) return { passed: true, message: '' };
+        const now = moment().format('YYYY-MM-DD'); 
+        if (date_string > now) { return { passed: true, message: '' }; }
+        return { passed: false, message: 'Expiry Date must be a future date.' };
+    };
+    
+    const validate_passport_chars = (value) => {
+        if (!value) return { passed: true, message: '' };
+        if (/[^a-zA-Z0-9]/.test(value)) {
+            return { passed: false, message: 'Passport Number cannot contain special characters.' };
+        }
+        return { passed: true, message: '' };
+    }
+    
+    // Global validation handler for individual controls - LOCAL ERROR DISPLAY (IMPROVED BLUR/CHANGE HANDLER)
+    const attach_validation_onchange = (control, validation_func) => {
+        if (!control) return;
+        
+        let $elements_to_check = [];
+        $elements_to_check.push($(control.input)); 
+        if (control.fieldtype === 'Link') { $elements_to_check.push($(control.wrapper).find('.btn-link')); } 
+        if (control.fieldtype === 'Attach') { $elements_to_check.push($(control.wrapper).find('.attach-button')); }
+        if (control.fieldtype === 'Select' || control.fieldtype === 'Phone') { $elements_to_check.push($(control.select) || $(control.input)); }
+
+        // Remove previous handlers to prevent double triggering
+        for (const $element of $elements_to_check) {
+            $element.off('blur.customvalidate change.customvalidate'); 
+        }
+
+        for (const $element of $elements_to_check) {
+            $element.on('blur.customvalidate change.customvalidate', (e) => { 
+                
+                const is_attach = control.fieldtype === 'Attach';
+                
+                const value = control.get_value();
+                
+                const result = validation_func(value);
+                const $wrapper = $(control.wrapper);
+                $wrapper.find('.local-error-message').remove(); 
+                
+                // Determine target element for red border
+                const $target_border = is_attach ? $wrapper.find('.attach-button').closest('.input-with-feedback') : $(control.input).length ? $(control.input) : $wrapper.find('.control-input');
+                $target_border.css('border-color', ''); 
+
+                if (!result.passed) {
+                    $wrapper.append(`<p class="local-error-message" style="color: red; font-size: 11px; margin-top: 5px;">${result.message}</p>`);
+                    $target_border.css('border-color', 'red');
+                } else {
+                     $wrapper.find('.control-label').css('color', 'inherit');
+                }
+            });
+        }
+    }
+
+    // **********************************************
+    
+    // ** CUSTOM CLOSE CONFIRMATION DIALOG FUNCTION ** 
+    const show_custom_close_confirmation = () => {
+        save_draft(); 
+        
+        const close_dialog = new frappe.ui.Dialog({
+            title: __('Close Confirmation'),
+            size: 'small',
+            fields: [
+                {
+                    fieldtype: 'HTML',
+                    options: `
+                        <div style="padding-bottom: 10px;">
+                            <h4>${__('Unsaved changes detected. What would you like to do?')}</h4>
+                        </div>
+                        <div style="margin-top: 20px; text-align: right; width: 100%;">
+                            <button id="discard-close-btn" class="btn btn-sm btn-default" style="margin-right: 10px;">
+                                ${__('Discard Data & Close')}
+                            </button>
+                            <button id="save-close-btn" class="btn btn-sm btn-primary">
+                                ${__('Save Draft & Close')}
+                            </button>
+                        </div>
+                    `
+                }
+            ],
+            actions: [] 
+        });
+
+        close_dialog.$wrapper.on('click', '#save-close-btn', () => {
+            save_draft(); 
+            clearInterval(dialog.draft_saver); 
+            close_dialog.hide();
+            dialog.hide();
+        });
+
+        close_dialog.$wrapper.on('click', '#discard-close-btn', () => {
+            clear_draft(); 
+            clearInterval(dialog.draft_saver); 
+            close_dialog.hide();
+            dialog.hide();
+        });
+
+        if (close_dialog.modal_close) {
+             close_dialog.modal_close.off('click').on('click', () => { close_dialog.hide() });
+        } else {
+             close_dialog.$wrapper.find('.modal-header .close').off('click').on('click', () => { close_dialog.hide() }); 
+        }
+        
+        close_dialog.show();
+    }
+    // **********************************************
 
     const dialog = new frappe.ui.Dialog({
         title: __("Create Sales Registration"),
         size: 'large',
         static: true, 
     });
+    
+    // FIX 1: INCREASE DIALOG WIDTH
+    dialog.get_full_width = true;
+    dialog.$wrapper.find('.modal-dialog').css({
+        'max-width': '90vw',
+        'width': '90vw'
+    });
+
 
     const wrapper = $(dialog.body);
+    // REORGANIZED TABS HTML
     wrapper.html(`
         <div>
             <ul class="nav nav-tabs" role="tablist">
                 <li class="nav-item"><a class="nav-link active" data-target="#tab-client" href="#">1. Client Information</a></li>
-                <li class="nav-item"><a class="nav-link" data-target="#tab-unit" href="#">2. Unit & Sale Details</a></li>
-                <li class="nav-item"><a class="nav-link" data-target="#tab-screening" href="#">3. Screening & KYC</a></li>
-                <li class="nav-item"><a class="nav-link" data-target="#tab-remarks" href="#">4. Remarks & Files</a></li>
+                <li class="nav-item"><a class="nav-link" data-target="#tab-joint-owners" href="#">2. Joint Owners</a></li> 
+                <li class="nav-item"><a class="nav-link" data-target="#tab-unit" href="#">3. Unit & Sale Details</a></li>
+                <li class="nav-item"><a class="nav-link" data-target="#tab-screening" href="#">4. Screening & KYC</a></li>
+                <li class="nav-item"><a class="nav-link" data-target="#tab-remarks" href="#">5. Remarks & Files</a></li>
             </ul>
             <div class="tab-content" style="padding-top: 15px;">
+                <!-- 1. Client Information (Main Client only) - 3 COLUMNS -->
                 <div class="tab-pane fade show active" id="tab-client" role="tabpanel">
-                    <h4>Main Client Details</h4><hr><div class="row"><div class="col-md-6" id="client-col-1"></div><div class="col-md-6" id="client-col-2"></div><div class="col-md-12" id="client-col-3"></div></div>
-                    <h4 class="mt-4">Joint Owners</h4><hr><div id="joint-owners-section"></div>
+                    <h4>Main Client Details</h4><hr><div class="row"><div class="col-md-4" id="client-col-1"></div><div class="col-md-4" id="client-col-2"></div><div class="col-md-4" id="client-col-3"></div><div class="col-md-12" id="client-col-4"></div></div>
                 </div>
-                <div class="tab-pane fade" id="tab-unit" role="tabpanel"><div class="row"><div class="col-md-6" id="unit-col-1"></div><div class="col-md-6" id="unit-col-2"></div></div></div>
+                <!-- 2. Joint Owners (Dedicated Tab) -->
+                <div class="tab-pane fade" id="tab-joint-owners" role="tabpanel"> 
+                    <h4>Joint Owners</h4><hr><div id="joint-owners-section"></div>
+                </div>
+                <!-- 3. Unit & Sale Details - NOW 3 COLUMNS -->
+                <div class="tab-pane fade" id="tab-unit" role="tabpanel">
+    
+    <!-- This row is for the 3 columns of controls -->
+    <div class="row">
+        <div class="col-md-4" id="unit-col-1"></div>
+        <div class="col-md-4" id="unit-col-2"></div>
+        <div class="col-md-4" id="unit-col-3"></div>
+    </div>
+    
+    <!-- START OF FIX: Add new full-width placeholders below the row -->
+    <div id="receipts_section_placeholder"></div>
+    <div id="receipts_table_placeholder"></div>
+    <!-- END OF FIX -->
+
+</div>
+                
+                <!-- 4. Screening & KYC (includes Joint Owner KYC) -->
                 <div class="tab-pane fade" id="tab-screening" role="tabpanel">
                     <h4>Client Screening</h4><hr><div id="screening-section"></div>
                     <div id="screening-yes-section" class="mt-3" style="display:none;"><div class="row"><div class="col-md-6"></div></div></div>
                     <div id="screening-no-section" class="mt-3" style="display:none;"><div class="row"><div class="col-md-6"></div><div class="col-md-6"></div><div class="col-md-12"></div></div></div>
-                    <h4 class="mt-4">KYC Document Uploads</h4><hr>
+                    <h4 class="mt-4">Main Client KYC Uploads</h4><hr>
                     <div id="main-kyc-placeholder"></div>
-                    <div id="joint-owners-kyc-placeholder"></div>
+                    <h4 class="mt-4">Joint Owners KYC Uploads</h4><hr><div id="joint-owners-kyc-placeholder"></div>
                 </div>
+                <!-- 5. Remarks & Files -->
                 <div class="tab-pane fade" id="tab-remarks" role="tabpanel"><h4>Remarks (Optional)</h4><hr><div id="remarks-section"></div><h4 class="mt-4">Additional Files (Optional)</h4><hr><div id="files-section" class="row"><div class="col-md-6"></div><div class="col-md-6"></div></div></div>
             </div>
         </div>
     `);
-
+    
     const make_control = (df, parent_id) => {
         const parent_element = wrapper.find(`#${parent_id}`);
         if (!parent_element.length) return;
@@ -199,26 +1562,68 @@ show_sales_completion_dialog() {
         return control;
     };
     
-    // Create all static fields...
-    make_control({ fieldname: 'form_type', label: 'Type of Register', fieldtype: 'Select', options: ['Expression of Interest (EOI)', 'Completed Sale'], reqd: 1 }, 'client-col-1');
+    // **********************************************
+    // * Main Client Field Creation
+    // **********************************************
+    // Client Col 1
+    make_control({ fieldname: 'form_type', label: 'Type of Register', fieldtype: 'Select', reqd: 1, options: ['Expression of Interest (EOI)', 'Completed Sale'] }, 'client-col-1');
     make_control({ fieldname: 'first_name', label: 'First Name', fieldtype: 'Data', reqd: 1 }, 'client-col-1');
     make_control({ fieldname: 'last_name', label: 'Last Name', fieldtype: 'Data', reqd: 1 }, 'client-col-1');
-    make_control({ fieldname: 'email', label: 'Email', fieldtype: 'Data', options: 'Email', reqd: 1 }, 'client-col-1');
-    make_control({ fieldname: 'main_phone_number', label: 'Main Phone Number', fieldtype: 'Phone', reqd: 1 }, 'client-col-1');
-    make_control({ fieldname: 'uae_phone_number', label: 'UAE Phone Number', fieldtype: 'Data', description: 'Format: +971-XX-XXXXXXX' }, 'client-col-1');
-    make_control({ fieldname: 'passport_number', label: 'Passport Number', fieldtype: 'Data', reqd: 1 }, 'client-col-2');
-    make_control({ fieldname: 'passport_expiry_date', label: 'Passport Expiry Date', fieldtype: 'Date', reqd: 1 }, 'client-col-2');
-    make_control({ fieldname: 'date_of_birth', label: 'Date of Birth', fieldtype: 'Date', reqd: 1 }, 'client-col-2');
-    make_control({ fieldname: 'passport_copy', label: 'Passport Copy (PDF/JPG/PNG)', fieldtype: 'Attach', reqd: 1 }, 'client-col-2');
-    make_control({ fieldname: 'country_of_origin', label: 'Country of Origin', fieldtype: 'Link', options: 'Country', reqd: 1 }, 'client-col-2');
-    make_control({ fieldname: 'country_of_residence', label: 'Country of Residence', fieldtype: 'Link', options: 'Country', reqd: 1 }, 'client-col-2');
-    make_control({ fieldname: 'age_range', label: 'Age Range', fieldtype: 'Select', options: ['\n21–29', '30–45', '46–55', '56–70', '+70'], reqd: 1 }, 'client-col-2');
-    make_control({ fieldname: 'yearly_estimated_income', label: 'Yearly Estimated Income (AED)', fieldtype: 'Currency', reqd: 1 }, 'client-col-2');
-    make_control({ fieldname: 'home_address', label: 'Home Address', fieldtype: 'Small Text', reqd: 1 }, 'client-col-3');
-    make_control({ fieldname: 'uae_address', label: 'Address in UAE (Optional)', fieldtype: 'Small Text' }, 'client-col-3');
-    make_control({ fieldname: 'unit_sale_type', label: 'Unit Category', fieldtype: 'Select', options: ['Off-Plan', 'Secondary'], reqd: 1 }, 'unit-col-1');
+    const main_email_control = make_control({ fieldname: 'email', label: 'Email', fieldtype: 'Data', options: 'Email', reqd: 1 }, 'client-col-1');
+    attach_validation_onchange(main_email_control, validate_email);
+    make_control({ fieldname: 'date_of_birth', label: 'Date of Birth', fieldtype: 'Date', reqd: 1 }, 'client-col-1');
+    // attach_validation_onchange(dob_control, validate_age); 
+
+    // Client Col 2
+    const main_phone_control = make_control({ 
+        fieldname: 'main_phone_number', 
+        label: 'Main Phone Number', 
+        fieldtype: 'Phone', 
+        reqd: 1, 
+        options: { 
+            onlyCountries: ['ae'],
+            initialCountry: 'ae',
+            separateDialCode: true 
+        } 
+    }, 'client-col-2'); 
+    
+    // *** FIX: FORCE +971- VALUE IMMEDIATELY AFTER CREATION FOR VISUAL DEFAULT ***
+    setTimeout(() => {
+        if (main_phone_control && !main_phone_control.get_value()) {
+            main_phone_control.set_value('+971-');
+        }
+    }, 100);
+    // --------------------------------------------------------------------------
+
+    const uae_phone_control = make_control({ fieldname: 'uae_phone_number', label: 'UAE Phone Number', fieldtype: 'Data', description: 'Fixed to +971 for UAE' }, 'client-col-2'); 
+    setup_uae_phone_data_control(uae_phone_control); 
+    
+    const passport_num_control = make_control({ fieldname: 'passport_number', label: 'Passport Number', fieldtype: 'Data', reqd: 1 }, 'client-col-2'); 
+    attach_validation_onchange(passport_num_control, validate_passport_chars); 
+    
+    const passport_expiry_control = make_control({ fieldname: 'passport_expiry_date', label: 'Passport Expiry Date', fieldtype: 'Date', reqd: 1 }, 'client-col-2');
+    attach_validation_onchange(passport_expiry_control, validate_future_date); 
+    
+    make_control({ fieldname: 'passport_copy', label: 'Passport Copy (PDF/JPG/PNG)', fieldtype: 'Attach', reqd: 1, options: { accepted_file_types: ['.pdf', '.jpg', '.jpeg', '.png'], show_preview: true } }, 'client-col-2');
+    
+    // Client Col 3
+    const country_origin_control = make_control({ fieldname: 'country_of_origin', label: 'Country of Origin', fieldtype: 'Link', options: 'Country', reqd: 1 }, 'client-col-3');
+    attach_validation_onchange(country_origin_control, (v) => ({ passed: v, message: 'Country is required' })); 
+    
+    const country_residence_control = make_control({ fieldname: 'country_of_residence', label: 'Country of Residence', fieldtype: 'Link', options: 'Country', reqd: 1 }, 'client-col-3');
+    attach_validation_onchange(country_residence_control, (v) => ({ passed: v, message: 'Country is required' })); 
+    
+    make_control({ fieldname: 'age_range', label: 'Age Range', fieldtype: 'Select', options: ['\n21–29', '30–45', '46–55', '56–70', '+70'], reqd: 1 }, 'client-col-3');
+    make_control({ fieldname: 'yearly_estimated_income', label: 'Yearly Estimated Income (AED)', fieldtype: 'Currency', reqd: 1 }, 'client-col-3');
+    
+    // Client Col 4 (12 column address fields)
+    make_control({ fieldname: 'home_address', label: 'Home Address', fieldtype: 'Small Text', reqd: 1 }, 'client-col-4');
+    make_control({ fieldname: 'uae_address', label: 'Address in UAE (Optional)', fieldtype: 'Small Text' }, 'client-col-4');
+    
+    // Unit Details fields... 
+    make_control({ fieldname: 'unit_sale_type', label: 'Unit Category', fieldtype: 'Select', reqd: 1, options: ['Off-Plan', 'Secondary'] }, 'unit-col-1');
     make_control({ fieldname: 'developer', label: 'Developer', fieldtype: 'Link', options: 'Developer', reqd: 1 }, 'unit-col-1');
-const project_control = make_control({
+    const project_control = make_control({
         fieldname: 'project',
         label: 'Project',
         fieldtype: 'Link',
@@ -227,70 +1632,89 @@ const project_control = make_control({
         onchange: () => {
             const project_name = project_control.get_value();
             const unit_floor_control = controls['unit_floor'];
-
             unit_floor_control.set_value("");
             unit_floor_control.df.options = [];
             unit_floor_control.refresh();
-
-            if (!project_name) {
-                return;
-            }
+            if (!project_name) { return; }
 
             frappe.call({
-                method: "joel_living.custom_lead.get_project_floor_details", // IMPORTANT: Change 'joel_living' to your app name
-                args: {
-                    project_name: project_name
-                },
+                method: "joel_living.custom_lead.get_project_floor_details", 
+                args: { project_name: project_name },
                 callback: function(r) {
                     if (r.message) {
                         const details = r.message;
-                        const number_of_floors = details.no_of_floors || 0;
-                        const has_mezzanine = details.include_mezzanine_floor; // This will be 0 or 1
+                        const number_of_floors_raw = details.no_of_floors || 0;
+                        const has_mezzanine = details.include_mezzanine_floor; 
+                        const has_ground_floor = details.include_ground_floor; 
                         
                         let floor_options = [];
+                        let numbered_floor_count = number_of_floors_raw;
 
-                        // Build the options array based on the logic
-                        floor_options.push('G'); // Ground floor is always first
+                        if (has_ground_floor) { floor_options.push('G'); numbered_floor_count--; }
+                        if (has_mezzanine) { floor_options.push('M'); numbered_floor_count--; }
+                        
+                        if (numbered_floor_count < 0) { numbered_floor_count = 0; }
 
-                        if (has_mezzanine) {
-                            floor_options.push('M');
-                            // If mezzanine exists, count up to (total floors - 1)
-                            for (let i = 1; i < number_of_floors; i++) {
-                                floor_options.push(String(i));
-                            }
-                        } else {
-                            // If no mezzanine, count up to the total number of floors
-                            for (let i = 1; i <= number_of_floors; i++) {
-                                floor_options.push(String(i));
-                            }
-                        }
+                        for (let i = 1; i <= numbered_floor_count; i++) { floor_options.push(String(i)); }
 
-                        // Update the Unit Floor dropdown with the new options
                         unit_floor_control.df.options = floor_options;
                         unit_floor_control.refresh();
                     }
                 }
             });
         }
-    }, 'unit-col-1');    make_control({ fieldname: 'developer_sales_rep', label: 'Developer Sales Representative', fieldtype: 'Link', options: 'User' }, 'unit-col-1');
-    make_control({ fieldname: 'unit_number', label: 'Unit Number', fieldtype: 'Data', reqd: 1 }, 'unit-col-1');
-    make_control({ fieldname: 'unit_type', label: 'Unit Type (e.g., 1BR, Studio)', fieldtype: 'Data', reqd: 1 }, 'unit-col-1');
+    }, 'unit-col-1');   
+    make_control({ fieldname: 'unit_floor', label: 'Unit Floor', fieldtype: 'Select', reqd: 1 }, 'unit-col-1'); 
+
+    make_control({ fieldname: 'unit_view', label: 'Unit View', fieldtype: 'Data', reqd: 1 }, 'unit-col-1');
+    
+    // Unit Col 2
+    make_control({ fieldname: 'developer_sales_rep', label: 'Developer Sales Representative', fieldtype: 'Link', options: 'User' }, 'unit-col-2');
+    make_control({ fieldname: 'unit_number', label: 'Unit Number', fieldtype: 'Data', reqd: 1 }, 'unit-col-2');
+    make_control({ fieldname: 'unit_type', label: 'Unit Type (e.g., 1BR, Studio)', fieldtype: 'Data', reqd: 1 }, 'unit-col-2');
     make_control({ fieldname: 'unit_price', label: 'Unit Price (AED)', fieldtype: 'Currency', reqd: 1 }, 'unit-col-2');
     make_control({ fieldname: 'unit_area', label: 'Unit Area (SQFT)', fieldtype: 'Float', reqd: 1 }, 'unit-col-2');
-    make_control({ fieldname: 'unit_view', label: 'Unit View', fieldtype: 'Data', reqd: 1 }, 'unit-col-2');
-    make_control({ fieldname: 'unit_floor', label: 'Unit Floor', fieldtype: 'Select', reqd: 1 }, 'unit-col-2');    make_control({ fieldname: 'booking_eoi_paid_amount', label: 'Booking/EOI Paid Amount (AED)', fieldtype: 'Currency', reqd: 1 }, 'unit-col-2');
-    make_control({ fieldname: 'booking_form_upload', label: 'Booking Form Upload', fieldtype: 'Attach' }, 'unit-col-2');
-    make_control({ fieldname: 'spa_upload', label: 'SPA Upload', fieldtype: 'Attach' }, 'unit-col-2');
-    make_control({ fieldname: 'soa_upload', label: 'SOA Upload', fieldtype: 'Attach' }, 'unit-col-2');
+
+    // Unit Col 3
+       
+    make_control({ fieldname: 'booking_eoi_paid_amount', label: 'Booking/EOI Paid Amount (AED)', fieldtype: 'Currency', reqd: 1 }, 'unit-col-3');
+    make_control({ fieldname: 'booking_form_signed', label: 'Booking Form Signed', fieldtype: 'Select', options: ['\nYes', '\nNo'], reqd: 1 }, 'unit-col-3');
+    make_control({ fieldname: 'booking_form_upload', label: 'Booking Form Upload', fieldtype: 'Attach' }, 'unit-col-3');
+
+    make_control({ fieldname: 'spa_upload', label: 'SPA Upload', fieldtype: 'Attach' }, 'unit-col-3');
+    make_control({ fieldname: 'soa_upload', label: 'SOA Upload', fieldtype: 'Attach' }, 'unit-col-3');
+    
+    // Receipts Section Title (use HTML instead of unsupported Section Break)
+    make_control({
+        fieldname: 'receipts_section_title',
+        fieldtype: 'HTML',
+        options: '<h4 style="margin-top:10px;">Receipts</h4>'
+    }, 'receipts_section_placeholder');
+
+    // This creates the table in its correct placeholder.
+    // make_control({
+    //     fieldname: 'receipts',
+    //     label: 'Receipts',
+    //     fieldtype: 'Table',
+    //     fields: [
+    //         { fieldname: 'receipt_date', label: 'Date', fieldtype: 'Date', in_list_view: 1, reqd: 1 },
+    //         { fieldname: 'receipt_amount', label: 'Amount (AED)', fieldtype: 'Currency', in_list_view: 1, reqd: 1 },
+    //         { fieldname: 'receipt_proof', label: 'Proof of Payment', fieldtype: 'Attach', reqd: 1, in_list_view: 1 }
+    //     ]
+    // }, 'receipts_table_placeholder');
+    
+    // Screening fields... 
     const screening_select = make_control({
         fieldname: 'screened_before_payment',
         label: 'Is the client screened by admin before the first payment?',
         fieldtype: 'Select', options: ['', '\nYes', '\nNo'], reqd: 1
     }, 'screening-section');
 
-    make_control({ fieldname: 'screenshot_of_green_light', label: 'Screenshot of green light...', fieldtype: 'Attach', reqd: 1 }, 'screening-yes-section .col-md-6');
+    make_control({ fieldname: 'screenshot_of_green_light', label: 'Screenshot of green light', fieldtype: 'Attach', reqd: 1 }, 'screening-yes-section .col-md-6');
     make_control({ fieldname: 'screening_date_time', label: 'Date and time of screening', fieldtype: 'Datetime', reqd: 1 }, 'screening-no-section .col-md-6:first-child');
     make_control({ fieldname: 'screening_result', label: 'Results of screening', fieldtype: 'Select', options: ['\nGreen', '\nRed'], reqd: 1 }, 'screening-no-section .col-md-6:last-child');
+    make_control({ fieldname: 'screening_result', label: 'Result', fieldtype: 'Select', options: ['\nGreen', '\nRed'], reqd: 1 }, 'screening-no-section .col-md-12');
+
     make_control({ fieldname: 'reason_for_late_screening', label: 'Reason for late screening', fieldtype: 'Small Text', reqd: 1 }, 'screening-no-section .col-md-12');
     make_control({ fieldname: 'final_screening_screenshot', label: 'Screenshot of final screening result...', fieldtype: 'Attach', reqd: 1 }, 'screening-no-section .col-md-12');
 
@@ -305,301 +1729,751 @@ const project_control = make_control({
         }
         wrapper.find('#screening-yes-section').toggle(show_yes);
         wrapper.find('#screening-no-section').toggle(show_no);
-    });
-     make_control({ fieldname: 'remark_title', label: 'Title', fieldtype: 'Data' }, 'remarks-section');
+    }).trigger('change');
+
+    // Remarks & Files fields...
+    make_control({ fieldname: 'remark_title', label: 'Title', fieldtype: 'Data' }, 'remarks-section');
     make_control({ fieldname: 'remark_description', label: 'Description', fieldtype: 'Small Text' }, 'remarks-section');
-    make_control({ fieldname: 'remark_files', label: 'Attachments (up to 3 files)', fieldtype: 'Attach' }, 'remarks-section');
+    make_control({ fieldname: 'remark_files', label: 'Attachments', fieldtype: 'Attach' }, 'remarks-section');
     make_control({ fieldname: 'additional_file_title', label: 'File Title', fieldtype: 'Data' }, 'files-section .col-md-6:first-child');
     make_control({ fieldname: 'additional_file_upload', label: 'File Upload', fieldtype: 'Attach' }, 'files-section .col-md-6:last-child');
     
 
     
+    // RENDER DYNAMIC FIELDS
     const render_dynamic_fields = () => {
-        const new_count = parseInt(controls.extra_joint_owners.get_value(), 10) || 0;
+        // Read the current value of the select control
+        const new_count = parseInt(controls.extra_joint_owners.get_value(), 10) || 0; 
         const owners_placeholder = wrapper.find('#joint-owners-placeholder');
         const kyc_placeholder = wrapper.find('#joint-owners-kyc-placeholder');
-        const current_count = owners_placeholder.find('.joint-owner-wrapper').length;
+        const current_count = owners_placeholder.find('.panel-group').length;
 
-        // SCENARIO 1: Add new sections if count increases
         if (new_count > current_count) {
             for (let i = current_count; i < new_count; i++) {
                 const owner_num = i + 1, prefix = `jo${i}`;
-                const owner_html = $(`<div class="form-section joint-owner-wrapper" data-idx="${i}" style="padding:10px; border:1px solid #d1d8dd; border-radius:4px; margin-top:15px;"><h5>Joint Owner ${owner_num} Details</h5><div class="row"><div class="col-md-6" id="${prefix}_col1"></div><div class="col-md-6" id="${prefix}_col2"></div><div class="col-md-12" id="${prefix}_col3"></div></div></div>`);
-                owners_placeholder.append(owner_html);
-                const kyc_html = $(`<div class="kyc-section joint-owner-kyc-wrapper row mt-3" data-idx="${i}"><div class="col-md-12"><h5>Joint Owner ${owner_num} KYC</h5></div><div class="col-md-6" id="${prefix}_kyc_date"></div><div class="col-md-6" id="${prefix}_kyc_file"></div></div>`);
+                
+                // *** Collapsible Accordion Setup (for Owner Info) ***
+                const collapse_id = `jo-collapse-${i}`;
+                const owner_section = $(`
+                    <div class="panel-group" id="jo-accordion-${i}" role="tablist" aria-multiselectable="true">
+                        <div class="panel panel-default">
+                            <div class="panel-heading" role="tab" id="heading-${collapse_id}" style="padding: 10px; cursor: pointer; background-color: #f7f9fa; border-bottom: 1px solid #d1d8dd;">
+                                <h5 class="panel-title" data-toggle="collapse" data-parent="#jo-accordion-${i}" href="#${collapse_id}" aria-expanded="true" aria-controls="${collapse_id}">
+                                    Joint Owner ${owner_num} Details
+                                </h5>
+                            </div>
+                            <div id="${collapse_id}" class="panel-collapse collapse joint-owner-wrapper" role="tabpanel" aria-labelledby="heading-${collapse_id}" data-idx="${i}" style="padding:15px; border:1px solid #d1d8dd; border-top: none;">
+                                <div class="row">
+                                    <div class="col-md-4" id="${prefix}_col1"></div>
+                                    <div class="col-md-4" id="${prefix}_col2"></div>
+                                    <div class="col-md-4" id="${prefix}_col3"></div>
+                                    <div class="col-md-12" id="${prefix}_col4"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `);
+                owners_placeholder.append(owner_section);
+                // * End Collapsible Setup *
+
+                // *** KYC Section Setup (in Screening & KYC Tab) ***
+                const kyc_html = $(`<div class="kyc-section joint-owner-kyc-wrapper row mt-3" data-idx="${i}"><div class="col-md-12"><h6>KYC for Joint Owner ${owner_num}</h6></div><div class="col-md-6" id="${prefix}_kyc_date"></div><div class="col-md-6" id="${prefix}_kyc_file"></div></div>`);
                 kyc_placeholder.append(kyc_html);
                 
+                // Column 1
                 make_control({ fieldname: `${prefix}_first_name`, label: 'First Name', fieldtype: 'Data', reqd: 1 }, `${prefix}_col1`);
                 make_control({ fieldname: `${prefix}_last_name`, label: 'Last Name', fieldtype: 'Data', reqd: 1 }, `${prefix}_col1`);
-                make_control({ fieldname: `${prefix}_email`, label: 'Email', fieldtype: 'Data', options: 'Email', reqd: 1 }, `${prefix}_col1`);
-                make_control({ fieldname: `${prefix}_main_phone_number`, label: 'Phone', fieldtype: 'Phone', reqd: 1 }, `${prefix}_col1`);
-                make_control({ fieldname: `${prefix}_passport_number`, label: 'Passport No.', fieldtype: 'Data', reqd: 1 }, `${prefix}_col2`);
-                make_control({ fieldname: `${prefix}_passport_expiry_date`, label: 'Passport Expiry', fieldtype: 'Date', reqd: 1 }, `${prefix}_col2`);
-                make_control({ fieldname: `${prefix}_date_of_birth`, label: 'Date of Birth', fieldtype: 'Date', reqd: 1 }, `${prefix}_col2`);
-                make_control({ fieldname: `${prefix}_passport_copy`, label: 'Passport Copy', fieldtype: 'Attach', reqd: 1 }, `${prefix}_col2`);
-                make_control({ fieldname: `${prefix}_home_address`, label: 'Home Address', fieldtype: 'Small Text', reqd: 1 }, `${prefix}_col3`);
-                make_control({ fieldname: `${prefix}_kyc_date`, label: 'Date of KYC Entry', fieldtype: 'Date', reqd: 1 }, `${prefix}_kyc_date`);
-                make_control({ fieldname: `${prefix}_kyc_file`, label: 'KYC File Upload', fieldtype: 'Attach', reqd: 1 }, `${prefix}_kyc_file`);
+const jo_email_control = make_control({ fieldname: `${prefix}_email`, label: 'Email', fieldtype: 'Data', options: 'Email', reqd: 1 }, `${prefix}_col1`);
+attach_validation_onchange(jo_email_control, validate_email);                
+                make_control({ fieldname: `${prefix}_date_of_birth`, label: 'Date of Birth', fieldtype: 'Date', reqd: 1 }, `${prefix}_col1`);
+                // attach_validation_onchange(jo_dob_control, validate_age); 
+
+                // Column 2
+                const jo_phone_control = make_control({ 
+                    fieldname: `${prefix}_main_phone_number`,
+                    label: 'Main Phone Number', 
+                    fieldtype: 'Phone', 
+                    reqd: 1, 
+                    options: { 
+                        onlyCountries: ['ae'],
+                        initialCountry: 'ae',
+                        separateDialCode: true
+                    }
+                }, `${prefix}_col2`);
+
+                // Set default +971- for Joint Owner Phone
+                setTimeout(() => {
+                    // Check if the control exists AND its current value is not set
+                    if (jo_phone_control && !jo_phone_control.get_value()) { 
+                        jo_phone_control.set_value('+971-');
+                    }
+                }, 50);
+
+                const jo_uae_phone_control = make_control({ fieldname: `${prefix}_uae_phone_number`, label: 'UAE Phone Number', fieldtype: 'Data', description: 'Fixed to +971 for UAE' }, `${prefix}_col2`);
+                setup_uae_phone_data_control(jo_uae_phone_control);
+                
+                const jo_passport_num_control = make_control({ fieldname: `${prefix}_passport_number`, label: 'Passport Number', fieldtype: 'Data', reqd: 1 }, `${prefix}_col2`);
+                attach_validation_onchange(jo_passport_num_control, validate_passport_chars);
+                
+                const jo_passport_expiry_control = make_control({ fieldname: `${prefix}_passport_expiry_date`, label: 'Passport Expiry Date', fieldtype: 'Date', reqd: 1 }, `${prefix}_col2`);
+                attach_validation_onchange(jo_passport_expiry_control, validate_future_date);
+                
+                make_control({ fieldname: `${prefix}_passport_copy`, label: 'Passport Copy (PDF/JPG/PNG)', fieldtype: 'Attach', reqd: 1, options: { accepted_file_types: ['.pdf', '.jpg', '.jpeg', '.png'], show_preview: true } }, `${prefix}_col2`);
+
+                // Column 3
+                const jo_country_origin_control = make_control({ fieldname: `${prefix}_country_of_origin`, label: 'Country of Origin', fieldtype: 'Link', options: 'Country', reqd: 1 }, `${prefix}_col3`);
+                attach_validation_onchange(jo_country_origin_control, (v) => ({ passed: v, message: 'Country is required' }));
+
+                const jo_country_residence_control = make_control({ fieldname: `${prefix}_country_of_residence`, label: 'Country of Residence', fieldtype: 'Link', options: 'Country', reqd: 1 }, `${prefix}_col3`);
+                attach_validation_onchange(jo_country_residence_control, (v) => ({ passed: v, message: 'Country is required' }));
+
+                make_control({ fieldname: `${prefix}_age_range`, label: 'Age Range', fieldtype: 'Select', reqd: 1, options: ['\n21–29', '30–45', '46–55', '56–70', '+70'], reqd: 1 }, `${prefix}_col3`);
+                make_control({ fieldname: `${prefix}_yearly_estimated_income`, label: 'Yearly Estimated Income (AED)', fieldtype: 'Currency', reqd: 1 }, `${prefix}_col3`);
+
+                // Column 4 (12 column address)
+                make_control({ fieldname: `${prefix}_home_address`, label: 'Home Address', fieldtype: 'Small Text', reqd: 1 }, `${prefix}_col4`);
+                make_control({ fieldname: `${prefix}_uae_address`, label: 'Address in UAE (Optional)', fieldtype: 'Small Text' }, `${prefix}_col4`);
+                
+                // KYC placeholders (in the Screening & KYC Tab)
+                const kyc_date_control = make_control({ fieldname: `${prefix}_kyc_date`, label: 'Date of KYC Entry', fieldtype: 'Date', reqd: 1 }, `${prefix}_kyc_date`);
+                const kyc_file_control = make_control({ fieldname: `${prefix}_kyc_file`, label: 'KYC File Upload', fieldtype: 'Attach', reqd: 1, options: { accepted_file_types: ['.pdf', '.jpg', '.jpeg', '.png'], show_preview: true } }, `${prefix}_kyc_file`);
+                
+                // P1 FIX: Attach Live Validation to ALL newly created controls 
+                const new_owner_controls = [
+                    `${prefix}_first_name`, `${prefix}_last_name`, `${prefix}_email`, `${prefix}_date_of_birth`, 
+                    `${prefix}_main_phone_number`, `${prefix}_uae_phone_number`, `${prefix}_passport_number`, 
+                    `${prefix}_passport_expiry_date`, `${prefix}_passport_copy`, `${prefix}_country_of_origin`, 
+                    `${prefix}_country_of_residence`, `${prefix}_age_range`, `${prefix}_yearly_estimated_income`, 
+                    `${prefix}_home_address`, `${prefix}_uae_address`, `${prefix}_kyc_date`, `${prefix}_kyc_file`
+                ];
+
+                new_owner_controls.forEach(key => {
+                    if(controls[key]) attachLiveValidation(controls[key]);
+                });
+                
+                // Collapse the section by default
+                owner_section.find(`#${collapse_id}`).collapse('hide');
             }
         }
         else if (new_count < current_count) {
             for (let i = new_count; i < current_count; i++) {
                 const prefix = `jo${i}`;
-                owners_placeholder.find(`.joint-owner-wrapper[data-idx="${i}"]`).remove();
+                owners_placeholder.find(`#jo-accordion-${i}`).remove();
                 kyc_placeholder.find(`.joint-owner-kyc-wrapper[data-idx="${i}"]`).remove();
                 
-                const fields_to_remove = [`${prefix}_first_name`, `${prefix}_last_name`, `${prefix}_email`, `${prefix}_main_phone_number`, `${prefix}_passport_number`, `${prefix}_passport_expiry_date`, `${prefix}_date_of_birth`, `${prefix}_passport_copy`, `${prefix}_home_address`, `${prefix}_kyc_date`, `${prefix}_kyc_file`];
+                const fields_to_remove = [
+                    `${prefix}_first_name`, `${prefix}_last_name`, `${prefix}_email`, `${prefix}_main_phone_number`, `${prefix}_uae_phone_number`,
+                    `${prefix}_passport_number`, `${prefix}_passport_expiry_date`, `${prefix}_date_of_birth`, `${prefix}_passport_copy`, 
+                    `${prefix}_country_of_origin`, `${prefix}_country_of_residence`, `${prefix}_age_range`, `${prefix}_yearly_estimated_income`,
+                    `${prefix}_home_address`, `${prefix}_uae_address`,
+                    `${prefix}_kyc_date`, `${prefix}_kyc_file`
+                ];
                 fields_to_remove.forEach(fieldname => { delete controls[fieldname]; });
             }
         }
     };
+    // --- Live validation cleanup (for all field types) ---
+function attachLiveValidation(control) {
+    const $wrapper = $(control.wrapper);
+    const $input = $(control.input);
+
+    // For basic input fields (Data, Date, Int, Float, etc.)
+    if (["Data", "Date", "Int", "Float", "Small Text", "Text", "Text Editor", "Datetime", "Currency"].includes(control.df.fieldtype)) {
+        $input.off("input.fieldvalidate change.fieldvalidate")
+            .on("input.fieldvalidate change.fieldvalidate", function () {
+                if ($(this).val() && String($(this).val()).trim() !== "") {
+                    $wrapper.find('.field-error').remove();
+                    $wrapper.find('.control-input').css('border-color', '');
+                    $input.css('border-color', ''); // Ensure input element border is cleared
+                }
+            });
+    }
+
+    // For Select fields
+    if (control.df.fieldtype === "Select") {
+        $wrapper.find("select").off("change.fieldvalidate").on("change.fieldvalidate", function () {
+            if ($(this).val()) {
+                $wrapper.find('.field-error').remove();
+                $wrapper.find('.select-container').css('border', '');
+            }
+        });
+    }
+
+    // For Link fields
+    if (control.df.fieldtype === "Link") {
+        // Use a safe onchange for validation error cleanup
+        const original_onchange = control.df.onchange;
+        control.df.onchange = () => {
+            const val = control.get_value();
+            if (val && val.trim() !== "") {
+                $wrapper.find('.field-error').remove();
+                $input.css('border-color', ''); 
+            }
+            if(original_onchange) original_onchange();
+        };
+    }
+
+    // For Attach fields
+    if (control.df.fieldtype === "Attach") {
+        // Attaching to the `on` call in control, triggered after a successful file attach
+        control.$wrapper.off("attachment_add").on("attachment_add", function () {
+            $wrapper.find('.field-error').remove();
+            $wrapper.find('.attach-button').closest('.input-with-feedback').css('border-color', '');
+        });
+        
+    }
+}
+
+
+    // --- UI EVENT HANDLERS & BUTTONS ---
+
+    // 1. Manually Inject Close Button HTML into Header (Top Right Button)
+    const close_button_html = `
+        <a href="#" class="btn btn-xs btn-default" id="custom-close-dialog" 
+           style="position: absolute; right: 15px; top: 12px; color: #1e88e5; border-color: #bbdefb; background-color: #e3f2fd; font-weight: bold; padding: 4px 10px;">
+            Close
+        </a>`;
+    dialog.header.find('.modal-title').closest('.modal-header').append(close_button_html);
     
-    // --- UI EVENT HANDLERS ---
-    wrapper.find('.nav-link').on('click', function(e) { e.preventDefault(); const target = $(this).data('target'); wrapper.find('.nav-link').removeClass('active'); wrapper.find('.tab-pane').removeClass('show active'); $(this).addClass('active'); wrapper.find(target).addClass('show active'); });
-    dialog.header.find('.modal-close').off('click').on('click', () => { frappe.confirm(__('Are you sure? Unsaved changes may be lost.'), () => { clearInterval(dialog.draft_saver); dialog.hide(); }); });
+    // 2. Attach action to the new manual close button - Dual Confirmation (calls functional small dialog)
+    dialog.header.find('#custom-close-dialog').on('click', (e) => {
+        e.preventDefault();
+        show_custom_close_confirmation();
+    });
+    // This MUST also be updated to ensure the single browser prompt doesn't overwrite your custom dialog on native X-click
+    dialog.header.find('.modal-close').off('click').on('click', (e) => { 
+        e.preventDefault();
+        show_custom_close_confirmation();
+    });
+
+    // CRITICAL FIX FOR TAB SWITCHING RELIABILITY (Replace default bootstrap logic with custom)
+    wrapper.find('.nav-link').on('click', function(e) { 
+        e.preventDefault(); 
+        const target = $(this).data('target'); 
+
+        // Remove active class from all links and content
+        wrapper.find('.nav-link').removeClass('active'); 
+        wrapper.find('.tab-pane').removeClass('show active'); 
+        
+        // Add active class to clicked link and target content
+        $(this).addClass('active'); 
+        wrapper.find(target).addClass('show active'); 
+
+        // Force scroll to top of the dialog after tab change
+        frappe.utils.scroll_to(dialog.body, true, 0);
+        if (target === '#tab-unit') {
+        // Use a timeout to guarantee the tab is visually 'open' before filling its HTML
+        setTimeout(() => {
+            render_receipt_rows(); 
+        }, 100);
+    }
+    });
+   
+    // --- THE DEFINITIVE SOLUTION: Create the control only when its tab is visible ---
+    // --- THE DEFINITIVE SOLUTION: Fixing the render race condition ---
+    // --- THE DEFINITIVE SOLUTION: Forcing a final UI render event ---
+//    wrapper.find('.nav-link[data-target="#tab-unit"]').one('click', () => {
+//         console.log("Tab clicked. Beginning table creation and population.");
+
+//         // Prevent running twice
+//         if (controls['receipts']) {
+//             return;
+//         }
+
+//         // STEP A: CREATE THE CONTROL now that its container is visible.
+//         // This guarantees Frappe will initialize it correctly.
+//         make_control({
+//             fieldname: 'receipts',
+//             label: 'Receipts',
+//             fieldtype: 'Table',
+//             fields: [
+//                 { fieldname: 'receipt_date', label: 'Date', fieldtype: 'Date', in_list_view: 1, reqd: 1 },
+//                 { fieldname: 'receipt_amount', label: 'Amount (AED)', fieldtype: 'Currency', in_list_view: 1, reqd: 1 },
+//                 { fieldname: 'receipt_proof', label: 'Proof of Payment', fieldtype: 'Attach', reqd: 1, in_list_view: 1 }
+//             ]
+//         }, 'receipts_table_placeholder');
+
+//         // STEP B: WAIT briefly for the browser to render the new empty table.
+//         // This solves the JavaScript race condition.
+//         setTimeout(() => {
+//             const receipts_control = controls['receipts'];
+
+//             // STEP C: POPULATE the now healthy and visible control.
+//             if (receipts_control && draft_receipts_data && Array.isArray(draft_receipts_data)) {
+//                 console.log("Control is rendered. Populating with data:", draft_receipts_data);
+                
+//                 // The standard API now works because the control is healthy.
+//                 receipts_control.set_value(draft_receipts_data);
+//                 receipts_control.refresh();
+
+//                 console.log("SUCCESS: Population complete.");
+//             }
+//         }, 150); // A small delay is all that's needed.
+//     });
+    // END OF CORRECTED FIX
+    // Dialog cleanup logic
     dialog.on_hide = () => { clearInterval(dialog.draft_saver); };
     dialog.draft_saver = setInterval(save_draft, 3000);
     
-    // --- PRIMARY ACTION (SUBMIT) ---
+    // 3. Define the bottom button (Create Registration) - Primary Action
+    // dialog.set_primary_action(__("Create Registration"), () => {
+    //     const values = {};
+    //     let first_invalid_control = null;
+    //     let is_valid = true;
+
+    //     // Clear any previous error messages and borders from custom and primary validation
+    //     wrapper.find(".field-error").remove();
+    //     wrapper.find(".local-error-message").remove(); 
+    //     wrapper.find('input, select, textarea').css('border-color', '');
+    //     wrapper.find('.attach-button').closest('.input-with-feedback').css('border-color', '');
+    //     wrapper.find('.select-container').css('border', '');
+        
+    //     // --- FIX: Conditional Required State Check ---
+    //     const screening_status_val = controls.screened_before_payment ? (controls.screened_before_payment.get_value() || '').trim() : '';
+    //     const is_yes_required = screening_status_val === 'Yes';
+    //     const is_no_required = screening_status_val === 'No';
+        
+    //     // Fields that are conditionally required
+    //     const YES_FIELDS = ['screenshot_of_green_light'];
+    //     const NO_FIELDS = ['screening_date_time', 'screening_result', 'reason_for_late_screening', 'final_screening_screenshot'];
+
+
+    //     // Loop through all controls in dialog (Validation Check)
+    //     for (let key in controls) {
+    //         if (controls[key]) {
+    //             const control = controls[key];
+    //             const value = control.get_value();
+    //             let failed_validation = false;
+    //             let validation_message = "";
+
+    //             // --- 1. Custom Field Validations (Check BEFORE required if present) ---
+    //             // (Existing Custom Validation logic remains here, no change needed)
+    //             let custom_validation_result = { passed: true, message: "" };
+
+    //             if (key.endsWith('passport_expiry_date') && value) {
+    //                  custom_validation_result = validate_future_date(value);
+    //             } else if (key.endsWith('passport_number') && value) {
+    //                  custom_validation_result = validate_passport_chars(value);
+    //             }
+                
+    //             if (!custom_validation_result.passed) {
+    //                 failed_validation = true;
+    //                 validation_message = custom_validation_result.message;
+    //             }
+                
+    //             // --- 2. Required Field Validation (If custom validation hasn't already failed) ---
+    //             if (!failed_validation && control.df.reqd) 
+    //             {
+    //                 const trimmed_value = String(value || '').trim();
+    //                 let is_empty = (value === undefined || value === null || trimmed_value === "" || (Array.isArray(value) && value.length === 0));
+
+    //                 // Special handling for Phone controls which can default to a prefix
+    //                 if ((control.fieldtype === 'Phone' || key === 'main_phone_number' || key.endsWith('_phone_number')) && (trimmed_value === '+971-' || trimmed_value === '+971')) {
+    //                     is_empty = true;
+    //                 }
+                    
+    //                 // Special handling for Select controls with default 'blank' option 
+    //                 if (control.fieldtype === 'Select' && (value === undefined || value === null || trimmed_value === "" || trimmed_value === "null")) {
+    //                      if (!value || (typeof value === 'string' && value.trim() === '')) {
+    //                          is_empty = true;
+    //                      } else {
+    //                          is_empty = false;
+    //                      }
+    //                 }
+
+    //                 // --- NEW LOGIC: Check for Conditional Required Fields ---
+    //                 let should_check_required = true;
+    //                 if (YES_FIELDS.includes(key) && !is_yes_required) {
+    //                     should_check_required = false;
+    //                 } else if (NO_FIELDS.includes(key) && !is_no_required) {
+    //                     should_check_required = false;
+    //                 }
+    //                 // -----------------------------------------------------
+
+    //                 if (should_check_required && is_empty) {
+    //                     failed_validation = true;
+    //                     validation_message = "This field is required.";
+    //                 }
+    //             }
+                
+    //             // --- 3. Handle Failure: Apply UI Error and Log First Invalid Control ---
+    //             if (failed_validation) {
+    //                 is_valid = false;
+
+    //                 // Display error
+    //                 const $wrapper = $(control.wrapper);
+    //                 $wrapper.find('.field-error, .local-error-message').remove();
+    //                 $wrapper.append(`<div class="field-error local-error-message" style="color: red; font-size: 11px; margin-top: 5px;">${validation_message}</div>`);
+                    
+    //                 // Apply red border
+    //                 const $target_border = (control.fieldtype === 'Attach') 
+    //                     ? $wrapper.find('.attach-button').closest('.input-with-feedback') 
+    //                     : ($(control.input).length ? $(control.input) : $wrapper.find('.control-input'));
+
+    //                 // For Select, highlight the internal input container if no explicit input field
+    //                 if (control.fieldtype === 'Select') {
+    //                      $wrapper.find('.select-container').css('border', '1px solid red');
+    //                 } else {
+    //                      $target_border.css('border-color', 'red');
+    //                 }
+                    
+
+    //                 if (!first_invalid_control) {
+    //                     first_invalid_control = control;
+    //                 }
+    //             }
+
+    //             // Collect values
+    //             values[key] = value;
+    //         }
+    //     }
+
+    //     // --- FINAL CHECK AND ACTION ---
+
+    //     if (!is_valid) { // Block submission if validation failed
+    //         const control = first_invalid_control;
+
+    //         // ** 1. Open Collapsible Section if needed (for Joint Owners) **
+    //         const joint_owner_wrapper = $(control.wrapper).closest('.joint-owner-wrapper');
+    //         if (joint_owner_wrapper.length) {
+    //             // This targets the inner div with the collapse class (e.g., #jo-collapse-0)
+    //             const collapse_id = joint_owner_wrapper.attr('id'); 
+    //             // Use Bootstrap/JQuery to force show the collapsed section
+    //             $(`#${collapse_id}`).collapse('show'); 
+    //         }
+
+    //         // ** 2. Switch Tab if needed **
+    //         const tab_pane = $(control.wrapper).closest('.tab-pane');
+    //         if (tab_pane.length) {
+    //             const tab_id = tab_pane.attr('id');
+    //             const tab_link = wrapper.find(`.nav-link[data-target="#${tab_id}"]`);
+    //             if (tab_link.length && !tab_link.hasClass('active')) {
+    //                 // Manually click the link to switch the tab using the custom handler
+    //                 tab_link.trigger('click'); 
+    //             }
+    //         }
+
+    //         // ** 3. Scroll & focus **
+    //         setTimeout(() => { 
+    //              // Scroll to the error field's wrapper
+    //              frappe.utils.scroll_to($(control.wrapper), true, 150);
+    //              if (control.input) control.input.focus();
+    //              else control.set_focus(); 
+    //         }, 300); // Give extra time for collapse/tab animation
+
+    //         // Stop submission alert
+    //         // frappe.show_alert({
+    //         //     message: __("Please correct all validation errors before proceeding. Errors may be on hidden fields in other tabs or in joint owner sections."),
+    //         //     indicator: "red",
+    //         // });
+
+    //         return;
+    //     }
+
+    //     // --- If all valid, proceed to backend ---
+    //     // const primary_btn = dialog.get_primary_btn();
+    //     // primary_btn.prop('disabled', true);
+    //     // frappe.call({
+    //     //     method: "joel_living.custom_lead.create_sales_registration",
+    //     //     args: {
+    //     //         lead_name: me.frm.doc.name,
+    //     //         data: values,
+    //     //     },
+    //     //     callback: (r) => {
+    //     //         if (r.message) {
+    //     //             localStorage.removeItem(DRAFT_KEY);
+    //     //             dialog.hide();
+    //     //             // frappe.set_route('Form', 'Sales Completion Form', r.message);
+    //     //             me.frm.reload_doc();
+    //     //         }
+    //     //     },
+    //     //     always: () => {
+    //     //         primary_btn.prop('disabled', false);
+    //     //     },
+    //     // });
+
+
+
+    //     const confirm_dialog = new frappe.ui.Dialog({
+    //         title: __('Confirm Submission'),
+    //         fields: [
+    //             {
+    //                 fieldtype: 'HTML',
+    //                 options: `<h4>${__('Are you sure you want to create the Sales Registration?')}</h4>`
+    //             }
+    //         ],
+    //         primary_action_label: __('Confirm & Submit'),
+    //         primary_action: () => {
+    //             confirm_dialog.hide();
+                
+    //             // --- If all valid, proceed to backend ---
+    //             const primary_btn = dialog.get_primary_btn();
+    //             primary_btn.prop('disabled', true);
+                
+    //             // Collect values one final time (already collected, but safer)
+    //             // Need to re-collect values if this block is executed separately, 
+    //             // but for simplicity, we'll pass the 'values' object already populated.
+    //             console.log('aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',values);
+    //             frappe.call({
+    //                 method: "joel_living.custom_lead.create_sales_registration",
+    //                 args: {
+    //                     lead_name: me.frm.doc.name,
+                        
+    //                     data: values, // 'values' is still accessible here from the outer function scope
+    //                 },
+    //                 callback: (r) => {
+    //                     if (r.message) {
+    //                         // localStorage.removeItem(DRAFT_KEY);
+    //                         dialog.hide();
+    //                         // frappe.set_route('Form', 'Sales Completion Form', r.message);
+    //                         me.frm.reload_doc();
+    //                     }
+    //                 },
+    //                 always: () => {
+    //                     primary_btn.prop('disabled', false);
+    //                 },
+    //             });
+    //         }
+    //     });
+        
+    //     confirm_dialog.show();
+    // });
+
     dialog.set_primary_action(__("Create Registration"), () => {
         const values = {};
         let first_invalid_control = null;
+        let is_valid = true;
+         receipts_data = get_receipt_values(); 
+        // Clear any previous error messages and borders from custom and primary validation
+        wrapper.find(".field-error").remove();
+        wrapper.find(".local-error-message").remove(); 
+        wrapper.find('input, select, textarea').css('border-color', '');
+        wrapper.find('.attach-button').closest('.input-with-feedback').css('border-color', '');
+        wrapper.find('.select-container').css('border', '');
+        
+        // --- FIX: Conditional Required State Check ---
+        const screening_status_val = controls.screened_before_payment ? (controls.screened_before_payment.get_value() || '').trim() : '';
+        const is_yes_required = screening_status_val === 'Yes';
+        const is_no_required = screening_status_val === 'No';
+        
+        // Fields that are conditionally required
+        const YES_FIELDS = ['screenshot_of_green_light'];
+        const NO_FIELDS = ['screening_date_time', 'screening_result', 'reason_for_late_screening', 'final_screening_screenshot'];
 
+
+        // Loop through all controls in dialog (Validation Check)
         for (let key in controls) {
             if (controls[key]) {
                 const control = controls[key];
                 const value = control.get_value();
-                
-                if (control.df.reqd && !value && $(control.wrapper).is(":visible")) {
-                    first_invalid_control = control;
-                    break;
+                let failed_validation = false;
+                let validation_message = "";
+
+                // --- 1. Custom Field Validations (Check BEFORE required if present) ---
+                let custom_validation_result = { passed: true, message: "" };
+
+                if (key.endsWith('passport_expiry_date') && value) {
+                     custom_validation_result = validate_future_date(value);
+                } else if (key.endsWith('passport_number') && value) {
+                     custom_validation_result = validate_passport_chars(value);
                 }
-                values[key] = control.get_value();
+                
+                if (!custom_validation_result.passed) {
+                    failed_validation = true;
+                    validation_message = custom_validation_result.message;
+                }
+                
+                // --- 2. Required Field Validation (If custom validation hasn't already failed) ---
+                if (!failed_validation && control.df.reqd) 
+                {
+                    const trimmed_value = String(value || '').trim();
+                    let is_empty = (value === undefined || value === null || trimmed_value === "" || (Array.isArray(value) && value.length === 0));
+
+                    if ((control.fieldtype === 'Phone' || key === 'main_phone_number' || key.endsWith('_phone_number')) && (trimmed_value === '+971-' || trimmed_value === '+971')) {
+                        is_empty = true;
+                    }
+                    
+                    if (control.fieldtype === 'Select' && (value === undefined || value === null || trimmed_value === "" || trimmed_value === "null")) {
+                         if (!value || (typeof value === 'string' && value.trim() === '')) {
+                             is_empty = true;
+                         } else {
+                             is_empty = false;
+                         }
+                    }
+
+                    let should_check_required = true;
+                    if (YES_FIELDS.includes(key) && !is_yes_required) {
+                        should_check_required = false;
+                    } else if (NO_FIELDS.includes(key) && !is_no_required) {
+                        should_check_required = false;
+                    }
+
+                    if (should_check_required && is_empty) {
+                        failed_validation = true;
+                        validation_message = "This field is required.";
+                    }
+                }
+                
+                // --- 3. Handle Failure: Apply UI Error and Log First Invalid Control ---
+                if (failed_validation) {
+                    is_valid = false;
+
+                    const $wrapper = $(control.wrapper);
+                    $wrapper.find('.field-error, .local-error-message').remove();
+                    $wrapper.append(`<div class="field-error local-error-message" style="color: red; font-size: 11px; margin-top: 5px;">${validation_message}</div>`);
+                    
+                    const $target_border = (control.fieldtype === 'Attach') 
+                        ? $wrapper.find('.attach-button').closest('.input-with-feedback') 
+                        : ($(control.input).length ? $(control.input) : $wrapper.find('.control-input'));
+
+                    if (control.fieldtype === 'Select') {
+                         $wrapper.find('.select-container').css('border', '1px solid red');
+                    } else {
+                         $target_border.css('border-color', 'red');
+                    }
+                    
+                    if (!first_invalid_control) {
+                        first_invalid_control = control;
+                    }
+                }
+
+                // Collect values
+                values[key] = value;
             }
         }
-        
-        // After the loop, check if we found an invalid field.
-        if (first_invalid_control) {
+        if (receipts_data.length === 0) {
+            is_valid = false;
+             // Append global error message if receipts are required and empty
+             frappe.show_alert({ message: __("Please add at least one receipt."), indicator: "red" }); 
+        } else {
+             receipts_data.forEach((row, index) => {
+                const row_num = index + 1;
+                // You must update the HTML in render_receipt_rows to show errors here
+                // For simplicity, this validation only blocks submission
+                if (!row.receipt_date) {
+                    is_valid = false;
+                    frappe.show_alert({ message: `Row #${row_num}: Date is required.`, indicator: "red" });
+                }
+                if (!row.receipt_amount || parseFloat(row.receipt_amount) <= 0) {
+                    is_valid = false;
+                    frappe.show_alert({ message: `Row #${row_num}: Amount must be a positive number.`, indicator: "red" });
+                }
+                if (!row.receipt_proof) {
+                    is_valid = false;
+                    frappe.show_alert({ message: `Row #${row_num}: Proof of Payment is required.`, indicator: "red" });
+                }
+             });
+        }
+        // END OF NEW VALIDATION BLOCK
+
+        // --- FINAL CHECK AND ACTION ---
+        values.receipts = receipts_data;
+        if (!is_valid) { // Block submission if validation failed
             const control = first_invalid_control;
 
-            // Highlight the field manually. A simple border works well.
-            $(control.wrapper).css('border', '1px solid red');
-            setTimeout(() => $(control.wrapper).css('border', ''), 2000); // Remove highlight after 2s
+            const joint_owner_wrapper = $(control.wrapper).closest('.joint-owner-wrapper');
+            if (joint_owner_wrapper.length) {
+                const collapse_id = joint_owner_wrapper.attr('id'); 
+                $(`#${collapse_id}`).collapse('show'); 
+            }
 
             const tab_pane = $(control.wrapper).closest('.tab-pane');
             if (tab_pane.length) {
-                const tab_pane_id = tab_pane.attr('id');
-                const tab_link = wrapper.find(`.nav-link[data-target="#${tab_pane_id}"]`);
+                const tab_id = tab_pane.attr('id');
+                const tab_link = wrapper.find(`.nav-link[data-target="#${tab_id}"]`);
                 if (tab_link.length && !tab_link.hasClass('active')) {
-                    tab_link.trigger('click');
+                    tab_link.trigger('click'); 
                 }
             }
 
-            frappe.utils.scroll_to($(control.wrapper), true, 150);
-            control.set_focus();
+            setTimeout(() => { 
+                 frappe.utils.scroll_to($(control.wrapper), true, 150);
+                 if (control.input) control.input.focus();
+                 else control.set_focus(); 
+            }, 300);
 
-            frappe.msgprint({
-                title: __('Missing Values'),
-                message: __('Please fill the required field: "{0}"', [control.df.label]),
-                indicator: 'orange'
-            });
-            
-            return; // Stop the submission.
+            return;
         }
 
-        // If no invalid field was found, proceed with submission.
-        const primary_btn = dialog.get_primary_btn();
-        primary_btn.prop('disabled', true);
-        frappe.call({
-            method: "joel_living.custom_lead.create_sales_registration",
-            args: { lead_name: me.frm.doc.name, data: values },
-            callback: (r) => {
-                if (r.message) {
-                    localStorage.removeItem(DRAFT_KEY);
-                    dialog.hide();
-                    frappe.set_route('Form', 'Sales Completion Form', r.message);
-                    me.frm.reload_doc();
+        const confirm_dialog = new frappe.ui.Dialog({
+            title: __('Confirm Submission'),
+            fields: [
+                {
+                    fieldtype: 'HTML',
+                    options: `<h4>${__('Are you sure you want to create the Sales Registration?')}</h4>`
                 }
-            },
-             always: () => {
-                // Re-enable the button when the call is complete
-                primary_btn.prop('disabled', false);
-            },
+            ],
+            primary_action_label: __('Confirm & Submit'),
+            primary_action: () => {
+                confirm_dialog.hide();
+                
+                const primary_btn = dialog.get_primary_btn();
+                primary_btn.prop('disabled', true);
+                
+                console.log('Submitting values:', values);
+                frappe.call({
+                    method: "joel_living.custom_lead.create_sales_registration",
+                    args: {
+                        lead_name: me.frm.doc.name,
+                        data: values,
+                    },
+                    callback: (r) => {
+                        if (r.message) {
+                            dialog.hide();
+                            me.frm.reload_doc();
+                        }
+                    },
+                    always: () => {
+                        primary_btn.prop('disabled', false);
+                    },
+                });
+            }
         });
+        
+        confirm_dialog.show();
     });
+
 
     dialog.show();
 
     // Create Main Client KYC only ONCE in its own safe placeholder
     make_control({ fieldname: `main_client_kyc_date`, label: 'Date of KYC Entry', fieldtype: 'Date', reqd: 1 }, 'main-kyc-placeholder');
-    make_control({ fieldname: `main_client_kyc_file`, label: 'KYC File Upload', fieldtype: 'Attach', reqd: 1 }, 'main-kyc-placeholder');
+    make_control({ fieldname: `main_client_kyc_file`, label: 'KYC File Upload', fieldtype: 'Attach', reqd: 1, options: { accepted_file_types: ['.pdf', '.jpg', '.jpeg', '.png'], show_preview: true } }, 'main-kyc-placeholder');
     
     // Create the joint owner select control and attach its event handler
     const joint_owners_wrapper = wrapper.find('#joint-owners-section');
-    joint_owners_wrapper.append('<div class="row"><div class="col-md-6" id="joint-owners-select"></div></div><div id="joint-owners-placeholder"></div>');
+    joint_owners_wrapper.append('<div class="row"><div class="col-md-4" id="joint-owners-select"></div></div><div id="joint-owners-placeholder"></div>');
     make_control({fieldname: 'extra_joint_owners', label: 'Number of Additional Joint Owners', fieldtype: 'Select', options: '0\n1\n2\n3'}, 'joint-owners-select');
     controls.extra_joint_owners.df.onchange = render_dynamic_fields;
 
-    // Load draft or set initial data from Lead
-    if (!load_draft()) {
-        controls.first_name.set_value(lead.first_name);
-        controls.last_name.set_value(lead.last_name || lead.lead_name);
-        controls.email.set_value(lead.email_id);
-        controls.main_phone_number.set_value(lead.mobile_no);
-        controls.country_of_residence.set_value(lead.country);
-        // Set dropdown to 0 to trigger initial correct render
-        controls.extra_joint_owners.set_value('0');
-        controls.screened_before_payment.set_value('');
+    // P1 FIX: Loop through ALL statically created controls to attach generic live validation for error clearing
+    for (let key in controls) {
+        if (controls[key]) {
+            attachLiveValidation(controls[key]); 
+        }
     }
-    render_dynamic_fields(); // Initial call
+    
+    // Load initial data trigger (calls load_draft and render_dynamic_fields)
+    load_draft();
+    
+    render_dynamic_fields(); // Final initial render call (runs after initial load for fresh opens)
 }
 
 
-    // show_sales_completion_dialog(transition) {
-    //     const me = this;
 
-    //     // Define all the fields for the dialog based on the Sales Completion Form doctype
-    //     const sales_form_fields = [
-    //         { fieldname: 'type_register', label: __('Type Register'), fieldtype: 'Select', options: 'EOI\nCompleted Sale', reqd: 1 },
-    //         { fieldtype: 'Section Break', label: 'Client(s) Information' },
-    //         { fieldname: 'first_name', label: __('First Name'), fieldtype: 'Data' },
-    //         { fieldname: 'last_name', label: __('Last Name'), fieldtype: 'Data' },
-    //         { fieldname: 'passport_number', label: __('Passport Number'), fieldtype: 'Data' },
-    //         { fieldname: 'passport_date_of_expiry', label: __('Passport Date of Expiry'), fieldtype: 'Date' },
-    //         { fieldname: 'passport_copy', label: __('Passport Copy'), fieldtype: 'Attach' },
-    //         { fieldtype: 'Column Break' },
-    //         { fieldname: 'date_of_birth', label: __('Date of Birth'), fieldtype: 'Date' },
-    //         { fieldname: 'main_phone_number', label: __('Main Phone Number'), fieldtype: 'Data' },
-    //         { fieldname: 'uae_phone_number', label: __('UAE Phone Number'), fieldtype: 'Data' },
-    //         { fieldname: 'email', label: __('Email'), fieldtype: 'Data' },
-    //         { fieldtype: 'Column Break' },
-    //         { fieldname: 'country_of_origin', label: __('Country of Origin'), fieldtype: 'Data' },
-    //         { fieldname: 'country_of_residence', label: __('Country of Residence'), fieldtype: 'Data' },
-    //         { fieldname: 'extra_joint_owners', label: __('Extra Joint Owners'), fieldtype: 'Select', options: 'No Joint Owners\n1\n2\n3' },
-    //         { fieldtype: 'Column Break' },
-    //         { fieldname: 'age_range', label: __('Age Range'), fieldtype: 'Select', options: '\n21-29\n30-45\n46-55\n56-70\n+70' },
-    //         { fieldname: 'yearly_estimated_income_as_per_kyc', label: __('Yearly Estimated Income (as per KYC)'), fieldtype: 'Currency' },
-    //         { fieldtype: 'Section Break', label: 'Address Info' },
-    //         { fieldname: 'home_address', label: __('Home Address'), fieldtype: 'Text' },
-    //         { fieldtype: 'Column Break' },
-    //         { fieldname: 'address_in_uae', label: __('Address in UAE'), fieldtype: 'Text' },
 
-    //         { fieldtype: 'Section Break', label: 'Unit Info' },
-    //         { fieldname: 'type', label: __('Type'), fieldtype: 'Select', options: '\nOff-plan\nSecondary' },
-    //         { fieldname: 'project', label: __('Project'), fieldtype: 'Data' },
-    //         { fieldname: 'unit_number', label: __('Unit Number'), fieldtype: 'Int' },
-    //         { fieldname: 'unit_area_sqft', label: __('Unit Area (SQFT)'), fieldtype: 'Float' },
-    //         { fieldname: 'unit_view', label: __('Unit View'), fieldtype: 'Data' },
-    //         { fieldtype: 'Column Break' },
-    //         { fieldname: 'developer', label: __('Developer'), fieldtype: 'Data' },
-    //         { fieldname: 'unit_type', label: __('Unit Type'), fieldtype: 'Data' },
-    //         { fieldname: 'unit_floor', label: __('Unit Floor'), fieldtype: 'Data' },
-    //         { fieldname: 'unit_price_aed', label: __('Unit Price (AED)'), fieldtype: 'Currency', reqd: 1 },
-    //         { fieldname: 'developer_sales_representative', label: __('Developer Sales Representative'), fieldtype: 'Data' },
-    //         { fieldtype: 'Column Break' },
-    //         { fieldname: 'bookingeoi_paid', label: __('Booking/EOI Paid'), fieldtype: 'Currency' },
-    //         { fieldname: 'bookingeoi_paid_amount_aed', label: __('Booking/EOI Paid Amount (AED)'), fieldtype: 'Currency' },
-    //         { fieldname: 'booking_form_signed', label: __('Booking Form Signed'), fieldtype: 'Select', options: '\nYes\nNo' },
-    //         { fieldname: 'upload_booking_form', label: __('Upload Booking Form'), fieldtype: 'Attach' },
-    //         { fieldtype: 'Column Break' },
-    //         { fieldname: 'spa_signed', label: __('SPA Signed'), fieldtype: 'Select', options: '\nYes\nNo' },
-    //         { fieldname: 'spa_upload', label: __('SPA Upload'), fieldtype: 'Attach' },
-    //         { fieldname: 'soa_upload', label: __('SOA Upload'), fieldtype: 'Attach' },
-    //         { fieldtype: 'Section Break', label: 'Client Screening' },
-    //         { fieldname: 'is_client_screened_before_payment', label: __('Is Client Screened Before Payment'), fieldtype: 'Select', options: '\nYes\nNo' },
-    //         { fieldname: 'screening_date_and_time', label: __('Screening Date and Time'), fieldtype: 'Datetime' },
-    //         { fieldname: 'screening_result', label: __('Screening Result'), fieldtype: 'Select', options: '\nGreen\nRed' },
-    //         { fieldtype: 'Column Break' },
-    //         { fieldname: 'screenshot_of_green_light', label: __('Screenshot of Green Light'), fieldtype: 'Attach' },
-            
-    //         { fieldname: 'screenshot_of_final_screening', label: __('Screenshot of Final Screening'), fieldtype: 'Attach' },
-    //         { fieldtype: 'Section Break'},
-    //         { fieldname: 'reason_for_late_screening', label: __('Reason for Late Screening'), fieldtype: 'Text' },
-    //     ];
 
-    //     // Create and show the dialog
-    //     const dialog = new frappe.ui.Dialog({
-    //         title: __('Sales Completion Form'),
-    //         fields: sales_form_fields,
-    //         primary_action_label: __('Submit'),
-    //         primary_action(values) {
-    //             // Freeze the UI during processing
-    //             frappe.dom.freeze(__("Submitting..."));
 
-    //             // Use frappe.call to insert the new document
-    //             frappe.call({
-    //                 method: 'frappe.client.insert',
-    //                 args: {
-    //                     doc: {
-    //         doctype: 'Sales Completion Form',
-            
-    //         // Explicitly mapping every single field from the 'values' object
-    //         type_register: values.type_register,
-    //         first_name: values.first_name,
-    //         last_name: values.last_name,
-    //         passport_number: values.passport_number,
-    //         passport_date_of_expiry: values.passport_date_of_expiry,
-    //         main_phone_number: values.main_phone_number,
-    //         uae_phone_number: values.uae_phone_number,
-    //         home_address: values.home_address,
-    //         address_in_uae: values.address_in_uae,
-    //         country_of_origin: values.country_of_origin,
-    //         country_of_residence: values.country_of_residence,
-    //         extra_joint_owners: values.extra_joint_owners,
-    //         passport_copy: values.passport_copy,
-    //         date_of_birth: values.date_of_birth,
-    //         email: values.email,
-    //         age_range: values.age_range,
-    //         yearly_estimated_income_as_per_kyc: values.yearly_estimated_income_as_per_kyc,
-    //         type: values.type,
-    //         project: values.project,
-    //         unit_area_sqft: values.unit_area_sqft,
-    //         unit_price_aed: values.unit_price_aed,
-    //         upload_booking_form: values.upload_booking_form,
-    //         soa_upload: values.soa_upload,
-    //         unit_number: values.unit_number,
-    //         developer_sales_representative: values.developer_sales_representative,
-    //         unit_view: values.unit_view,
-    //         bookingeoi_paid: values.bookingeoi_paid,
-    //         spa_signed: values.spa_signed,
-    //         bookingeoi_paid_amount_aed: values.bookingeoi_paid_amount_aed,
-    //         developer: values.developer,
-    //         unit_type: values.unit_type,
-    //         unit_floor: values.unit_floor,
-    //         booking_form_signed: values.booking_form_signed,
-    //         spa_upload: values.spa_upload,
-    //         is_client_screened_before_payment: values.is_client_screened_before_payment,
-    //         screening_result: values.screening_result,
-    //         screenshot_of_green_light: values.screenshot_of_green_light,
-    //         reason_for_late_screening: values.reason_for_late_screening,
-    //         screening_date_and_time: values.screening_date_and_time,
-    //         screenshot_of_final_screening: values.screenshot_of_final_screening,
-    //         lead_id: me.frm.doc.name,
-    //     }
-    //                 },
-    //                 callback: function (r) {
-    //                     frappe.dom.unfreeze();
-    //                     if (!r.exc) {
-    //                          // Hide the dialog.
-    //                         dialog.hide();
-                            
-    //                         // Immediately show the confirmation message.
-    //                         frappe.msgprint({
-    //                             message: __("Sales Completion Form {0} has been created. The lead will be closed upon its approval.", [`<a href="/app/sales-completion-form/${r.message.name}" target="_blank">${r.message.name}</a>`]),
-    //                             title: __('Action Required'),
-    //                             indicator: 'green' 
-    //                         });
-                            
-    //                         // Refresh the form to ensure a clean state.
-    //                         me.frm.refresh();
-    //                     }
-    //                     // Frappe handles errors (r.exc) automatically
-    //                 }
-    //             });
-    //         }
-    //     });
-    //     dialog.show();
-    // }
+
+
+
+
+
+
+
+
+
+/////////////////////////////////////////////////////////////////////////
 
 
     apply_workflow_action(transition) {

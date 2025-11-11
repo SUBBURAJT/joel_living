@@ -623,10 +623,9 @@ def request_hide(leads):
 # =========================================================
 # ADMIN ACTION — APPROVE HIDE
 # =========================================================
- 
 @frappe.whitelist()
 def approve_hide_request(docname):
-    """Approve a hide request (Admin or Administrator only)."""
+    """Approve a hide request (Admin or Administrator only, without deleting the Lead)."""
     try:
         req = frappe.get_doc("Lead Hide Request", docname)
         current_user = frappe.session.user
@@ -638,17 +637,15 @@ def approve_hide_request(docname):
         lead_id = req.lead
         requester_user = getattr(req, "requested_by_user", None)
  
-        # Store the lead ID as text before deletion
-        req.db_set("lead", lead_id, update_modified=False)
+        # ✅ Instead of deleting, mark the lead as hidden and clear ownership
+        frappe.db.set_value("Lead", lead_id, {
+            "lead_owner": None,
+            "custom_hide_status": "Trashed",
+            "custom_is_hidden": 0  # Hide lead from all views
+        })
+        frappe.db.commit()
  
-        # Delete the Lead safely
-        try:
-            frappe.delete_doc("Lead", lead_id, ignore_permissions=True, force=True)
-        except Exception as delete_error:
-            frappe.log_error(f"Failed to delete lead {lead_id}: {delete_error}")
-            return {"ok": False, "message": f"Could not delete Lead {lead_id}. Check dependencies."}
- 
-        # Update request details (keep lead field as text)
+        # ✅ Update request details
         frappe.db.set_value("Lead Hide Request", req.name, {
             "status": "Approved",
             "approval_date": now(),
@@ -656,7 +653,7 @@ def approve_hide_request(docname):
             "approved_by_user": current_user
         })
  
-        # Enqueue approval email
+        # ✅ Send email to requester
         if requester_user:
             requester_email = frappe.db.get_value("User", requester_user, "email")
             if requester_email:
@@ -664,7 +661,7 @@ def approve_hide_request(docname):
                 message = f"""
                     <p>Dear {req.requested_by},</p>
                     <p>Your request to hide the lead <b>{lead_id}</b> has been <b>approved</b> by <b>{approver_full_name}</b>.</p>
-                    <p>The lead has been permanently deleted and recorded in Deleted Documents.</p>
+                    <p>The lead has been successfully hidden and removed from the active list.</p>
                     <br>
                     <p>Regards,<br><b>{approver_full_name}</b><br>Administrator</p>
                 """
@@ -679,13 +676,12 @@ def approve_hide_request(docname):
                     ref_name=req.name
                 )
  
-        frappe.msgprint("Lead hide request approved successfully.")
+        frappe.msgprint("Lead hide request approved successfully (lead hidden).")
         return {"ok": True, "message": "Lead hide request approved successfully."}
  
     except Exception as e:
         frappe.log_error(f"Approve hide failed for {docname}: {frappe.get_traceback()}")
         return {"ok": False, "message": f"Failed to approve hide request: {str(e)}"}
- 
  
 # =========================================================
 # ADMIN ACTION — REJECT HIDE
@@ -1232,19 +1228,19 @@ def submit_for_approval(doc_name: str):
         frappe.log_error(frappe.get_traceback(), "Approval Submission Error")
         frappe.throw(f"An error occurred: {e}")
 
-@frappe.whitelist()
-def approve_registration(doc_name: str, commission_percentage: float):
-    if not (frappe.user.has_role("Admin") or frappe.user.has_role("Super Admin")):
-        frappe.throw(_("You do not have permissions to approve this."), frappe.PermissionError)
+# @frappe.whitelist()
+# def approve_registration(doc_name: str, commission_percentage: float):
+#     if not (frappe.user.has_role("Admin") or frappe.user.has_role("Super Admin")):
+#         frappe.throw(_("You do not have permissions to approve this."), frappe.PermissionError)
 
-    doc = frappe.get_doc("Sales Registration Form", doc_name)
-    if doc.status != "Awaiting Review":
-        frappe.throw(f"Cannot approve a document with status '{doc.status}'.")
+#     doc = frappe.get_doc("Sales Registration Form", doc_name)
+#     if doc.status != "Awaiting Review":
+#         frappe.throw(f"Cannot approve a document with status '{doc.status}'.")
 
-    doc.status = "Approved"
-    doc.commission_percentage = commission_percentage
-    doc.save(ignore_permissions=True)
-    return {"status": "success", "message": "Registration has been approved."}
+#     doc.status = "Approved"
+#     doc.commission_percentage = commission_percentage
+#     doc.save(ignore_permissions=True)
+#     return {"status": "success", "message": "Registration has been approved."}
 
 
 # This function is completely new to handle the detailed rejection.
@@ -1319,39 +1315,78 @@ def get_sales_reg_name_and_status_field(lead_name):
 
 
 # Add these two new functions to your existing python file
-import frappe
-from frappe import _
-
 @frappe.whitelist()
-def approve_registration(doc_name: str, commission_percentage: float):
+def approve_registration(doc_name, commission_percentage):
+    print("Approving Sales Registration Form", doc_name, commission_percentage)
     """
-    Approves a Sales Registration Form. Restricted to Admin and Super Admin roles.
+    Approves the Sales Registration Form, sets status to 'Approved',
+    records the commission percentage, clears rejection-related fields,
+    and updates the associated Lead's custom_lead_status to 'Closed'.
+    
+    :param doc_name: The name of the Sales Registration Form document (str).
+    :param commission_percentage: The commission percentage to record (float).
+    :returns: Success message.
     """
-    # 1. CORRECTED Security Check: Ensure the user is Admin OR Super Admin
-    user_roles = frappe.get_roles()
-    if "Admin" not in user_roles and "Super Admin" not in user_roles:
-        frappe.throw(
-            _("You do not have the required permissions to approve this document."),
-            frappe.PermissionError
-        )
+    
+    # --- 1. Permissions Check ---
+    allowed_roles = ["System Manager", "Administrator", "Admin"]
+    user_roles = frappe.get_roles(frappe.session.user) 
+    is_authorized = any(role in user_roles for role in allowed_roles)
 
+    if not is_authorized:
+        frappe.throw(frappe._("You are not permitted to approve Sales Registration Forms."))
+    
+    # --- 2. Fetch the document ---
     try:
         doc = frappe.get_doc("Sales Registration Form", doc_name)
-
-        if doc.status != "Awaiting Review":
-            frappe.throw(f"This document is in '{doc.status}' status and cannot be approved.")
-
-        doc.status = "Approved"
-        doc.commission_percentage = commission_percentage
+    except frappe.DoesNotExistError:
+        frappe.throw(frappe._("Sales Registration Form {0} not found.").format(doc_name))
         
-        doc.save(ignore_permissions=True)
-        
-        return {"status": "success", "message": "Registration has been approved."}
+    # --- 3. Validate Status ---
+    if doc.status not in ["Awaiting Review"]:
+        frappe.throw(frappe._("Only 'Awaiting Review' documents can be approved."))
 
-    except Exception as e:
-        frappe.log_error(frappe.get_traceback(), "Approve Registration Error")
-        frappe.throw(f"An error occurred: {e}")
+    # --- 4. Validate Commission Percentage ---
+    try:
+        commission_percentage = float(commission_percentage)
+    except (ValueError, TypeError):
+        frappe.throw(frappe._("Invalid commission percentage value. It must be a valid number."))
+    
+    if commission_percentage <= 0:
+        frappe.throw(frappe._("Commission percentage must be greater than 0."))
+    
+    # --- 5. Update Approval Details ---
+    doc.status = "Approved"
+    doc.commission_percentage = commission_percentage
+    doc.approved_on = now()
+    doc.approved_by = frappe.session.user
+    
+    # Clear rejection-related fields
+    doc.rejected_fields_json = ""
+    doc.last_rejected_fields_json = ""
+    doc.rejection_reason = ""
+    doc.rejection_count = 0  # Reset or keep as is? Assuming reset for new approval
+    
+    # --- 6. Save Sales Registration ---
+    doc.save(ignore_permissions=True)
+    
+    # --- 7. Update Associated Lead ---
+    if hasattr(doc, 'lead') and doc.lead:
+        try:
+            lead = frappe.get_doc("Lead", doc.lead)
+            lead.custom_lead_status = "Closed"
+            lead.save(ignore_permissions=True)
+        except frappe.DoesNotExistError:
+            frappe.log_error(title="Lead Update Error", message=f"Lead {doc.lead} not found for Sales Registration {doc_name}")
+    
+    # --- 8. Commit ---
+    frappe.db.commit()
 
+    # --- 9. Return Success Message ---
+    return {
+        "status": "success",
+        "message": frappe._("Sales Registration Form {0} has been approved with {1}% commission and associated Lead updated to Closed.").format(doc_name, commission_percentage)
+    }
 
 @frappe.whitelist()
 def reject_registration(doc_name: str, rejection_reason: str):
@@ -1392,9 +1427,8 @@ import frappe
 from frappe.utils import now
 import json
 from decimal import Decimal # Recommended for precise currency math
-
 @frappe.whitelist()
-def reject_sales_registration(doc_name, rejected_fields_json, rejection_reason, fine_amount=0):
+def reject_sales_registration(doc_name, rejected_fields_json, rejection_reason, fine_amount=0, fine_description='', fine_date=''):
     """
     Sets the Sales Registration Form status to 'Rejected', saves the list of 
     fields that need correction, stores the rejection reason, increments 
@@ -1404,6 +1438,8 @@ def reject_sales_registration(doc_name, rejected_fields_json, rejection_reason, 
     :param rejected_fields_json: JSON string of fields/attachments marked for rejection (str).
     :param rejection_reason: Detailed reason for the rejection (str).
     :param fine_amount: Optional fine amount to record (Decimal/float/str, default 0).
+    :param fine_description: Optional fine description (str, default '').
+    :param fine_date: Optional fine date (str in 'YYYY-MM-DD' format, default '').
     :returns: Success message.
     """
     
@@ -1447,7 +1483,6 @@ def reject_sales_registration(doc_name, rejected_fields_json, rejection_reason, 
         frappe.log_error(title="Rejection Data Error", message=f"Invalid JSON in rejected_fields_json for doc {doc_name}: {rejected_fields_json}")
         frappe.throw(frappe._("Invalid data provided for rejected fields."))
 
-
     doc.rejection_reason = rejection_reason
     
     # Increase the rejection count
@@ -1457,14 +1492,17 @@ def reject_sales_registration(doc_name, rejected_fields_json, rejection_reason, 
     
     # --- 6. Append to Sales Registration Fines child table ---
     if fine_amount_decimal > 0:
-        fine_description = frappe._("Fine recorded due to registration rejection on {0}. Reason: {1}").format(now(), rejection_reason)
+        # Use provided fine_date if available, else current date
+        fine_date_to_use = fine_date if fine_date else now().split()[0]
+        
+        # Use provided fine_description if available, else default
+        fine_description_to_use = fine_description if fine_description else frappe._("Fine recorded due to registration rejection on {0}. Reason: {1}").format(now(), rejection_reason)
 
         doc.append("sales_registration_fines", {
-            "fine_date": now().split()[0], # Just the date part (assuming format 'YYYY-MM-DD')
-            "fine_description": fine_description,
+            "fine_date": fine_date_to_use,
+            "fine_description": fine_description_to_use,
             "fine_amount": fine_amount_decimal
         })
-
 
     # --- 7. Save and Commit ---
     doc.save(ignore_permissions=True)
@@ -1475,7 +1513,6 @@ def reject_sales_registration(doc_name, rejected_fields_json, rejection_reason, 
         "status": "success",
         "message": frappe._("Sales Registration Form {0} has been marked as Rejected and fine of {1} recorded (if applicable).").format(doc_name, fine_amount)
     }
-
 # @frappe.whitelist()
 # def reject_registration(doc_name, reason, rejected_fields):
 #     """Sets status to 'Rejected', increments count, and logs reasons."""
@@ -1494,11 +1531,19 @@ def reject_sales_registration(doc_name, rejected_fields_json, rejection_reason, 
 #         frappe.throw(f"Could not reject document: {str(e)}")
 
 # This function is used by the refresh trigger on the Lead form
+import frappe
+
 @frappe.whitelist()
 def get_sales_registration_for_lead(lead_name):
-    docs = frappe.get_all("Sales Registration Form", filters={"lead": lead_name}, fields=["name"])
-    return docs[0].name if docs else None
-
+    try:
+        # Your existing logic, e.g.:
+        sr = frappe.get_all("Sales Registration Form", filters={"lead": lead_name}, fields=["name", "status"])
+        if sr:
+            return frappe.get_doc("Sales Registration Form", sr[0].name).as_dict()
+        return None
+    except Exception as e:
+        frappe.log_error(f"Sales Reg Error for {lead_name}: {str(e)}", "Sales Registration Lookup")
+        return {"exc": str(e)}
 
 @frappe.whitelist()
 def update_and_log_registration(docname, changes, user):

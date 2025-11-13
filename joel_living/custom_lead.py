@@ -1762,8 +1762,8 @@ def set_version_ip_address(doc, method=None):
 
     ip_address = None
     # Use frappe.request.remote_addr which is more commonly available
-    if hasattr(frappe.request, 'remote_addr'):
-        ip_address = frappe.request.remote_addr
+    # if hasattr(frappe.request, 'remote_addr'):
+    #     ip_address = frappe.request.remote_addr
     
     # Fallback to a clear marker if the request object or IP is missing (e.g., if called via scheduler or CLI)
     doc.custom_ip_address = ip_address or 'Server-Side/CLI/Unknown' 

@@ -148,6 +148,12 @@ doc_events = {
         "before_save": "joel_living.lead_permission.on_lead_assignment_change",
         "after_insert": "joel_living.lead_permission.after_insert_lead_assignment"
    
+    },
+    "Sales Registration Form": {
+        "after_save": "joel_living.custom_lead.log_ip_address_and_changes"
+    },
+    "Version": {
+        "before_save": "joel_living.custom_lead.set_version_ip_address"
     }
 }
 
@@ -166,6 +172,14 @@ scheduler_events = {
     "cron": {
         "*/15 * * * *": [
             "joel_living.lead_permission.unassign_expired_open_leads" # every 15 minutes
+        ],
+         # Run every 5 minutes (check for 2-hour sessions and midnight logout)
+        "*/5 * * * *": [
+            "joel_living.custom_lead_changes.auto_logout_inactive_users"
+        ],
+        # Run again exactly at midnight Dubai time for safety
+        "0 0 * * *": [
+            "joel_living.custom_lead_changes.auto_logout_inactive_users"
         ]
     }
 	# "all": [

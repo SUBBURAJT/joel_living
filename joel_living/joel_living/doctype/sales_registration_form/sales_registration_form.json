@@ -1,6 +1,6 @@
 {
  "actions": [],
- "autoname": "autoincrement",
+ "autoname": "format:SR-{###}",
  "creation": "2025-11-03 22:13:17.350310",
  "doctype": "DocType",
  "engine": "InnoDB",
@@ -503,7 +503,7 @@
  "modified_by": "Administrator",
  "module": "Joel Living",
  "name": "Sales Registration Form",
- "naming_rule": "Autoincrement",
+ "naming_rule": "Expression",
  "owner": "Administrator",
  "permissions": [
   {

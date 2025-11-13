@@ -335,9 +335,10 @@
   }
  ],
  "grid_page_length": 50,
+ "hide_toolbar": 1,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-10-22 21:51:28.616357",
+ "modified": "2025-10-29 10:49:19.046589",
  "modified_by": "Administrator",
  "module": "Joel Living",
  "name": "Sales Completion Form",

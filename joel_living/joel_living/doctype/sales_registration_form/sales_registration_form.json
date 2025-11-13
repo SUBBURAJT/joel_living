@@ -1,6 +1,6 @@
 {
  "actions": [],
- "autoname": "autoincrement",
+ "autoname": "format:SR-{###}",
  "creation": "2025-11-03 22:13:17.350310",
  "doctype": "DocType",
  "engine": "InnoDB",
@@ -499,11 +499,11 @@
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-11-09 16:02:32.252492",
+ "modified": "2025-11-09 20:17:51.464019",
  "modified_by": "Administrator",
  "module": "Joel Living",
  "name": "Sales Registration Form",
- "naming_rule": "Autoincrement",
+ "naming_rule": "Expression",
  "owner": "Administrator",
  "permissions": [
   {

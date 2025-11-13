@@ -1,6 +1,6 @@
 {
  "actions": [],
- "autoname": "autoincrement",
+ "autoname": "format:PRO-{###}",
  "creation": "2025-11-03 23:40:30.910295",
  "doctype": "DocType",
  "engine": "InnoDB",
@@ -43,11 +43,11 @@
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-11-04 22:12:17.659683",
+ "modified": "2025-11-09 20:11:11.263128",
  "modified_by": "Administrator",
  "module": "Joel Living",
  "name": "Project List",
- "naming_rule": "Autoincrement",
+ "naming_rule": "Expression",
  "owner": "Administrator",
  "permissions": [
   {

@@ -1,0 +1,102 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "autoname": "format:LHR-{MM}-{#####}",
+ "creation": "2025-10-30 22:55:04.222262",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "lead",
+  "requested_by",
+  "requested_date",
+  "status",
+  "approved_by",
+  "approval_date",
+  "requested_by_user",
+  "approved_by_user",
+  "lead_id"
+ ],
+ "fields": [
+  {
+   "fieldname": "lead",
+   "fieldtype": "Link",
+   "label": "Lead",
+   "options": "Lead"
+  },
+  {
+   "fieldname": "requested_by",
+   "fieldtype": "Data",
+   "label": "Requested By"
+  },
+  {
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "label": "Status",
+   "options": "Pending\nApproved\nRejected"
+  },
+  {
+   "fieldname": "approval_date",
+   "fieldtype": "Date",
+   "label": "Processed Date"
+  },
+  {
+   "fieldname": "approved_by",
+   "fieldtype": "Data",
+   "label": "Processed By"
+  },
+  {
+   "fieldname": "requested_date",
+   "fieldtype": "Date",
+   "label": "Requested Date"
+  },
+  {
+   "fieldname": "requested_by_user",
+   "fieldtype": "Link",
+   "hidden": 1,
+   "label": "Requested By User",
+   "options": "User"
+  },
+  {
+   "fieldname": "approved_by_user",
+   "fieldtype": "Link",
+   "hidden": 1,
+   "label": "Approved By User",
+   "options": "User"
+  },
+  {
+   "fieldname": "lead_id",
+   "fieldtype": "Data",
+   "hidden": 1,
+   "label": "Lead ID",
+   "read_only": 1
+  }
+ ],
+ "grid_page_length": 50,
+ "hide_toolbar": 1,
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2025-11-04 10:14:33.148186",
+ "modified_by": "ajay@skadits.com",
+ "module": "Joel Living",
+ "name": "Lead Hide Request",
+ "naming_rule": "Expression",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

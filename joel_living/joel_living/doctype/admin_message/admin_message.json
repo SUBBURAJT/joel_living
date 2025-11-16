@@ -12,7 +12,8 @@
   "select_user",
   "sent_date",
   "status",
-  "is_send"
+  "is_send",
+  "recipient_name"
  ],
  "fields": [
   {
@@ -71,14 +72,20 @@
    "fieldtype": "Check",
    "hidden": 1,
    "label": "Is Send"
+  },
+  {
+   "fieldname": "recipient_name",
+   "fieldtype": "Data",
+   "hidden": 1,
+   "label": "Recipient Names"
   }
  ],
  "grid_page_length": 50,
  "hide_toolbar": 1,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-10-28 20:24:44.311680",
- "modified_by": "Administrator",
+ "modified": "2025-11-05 18:29:04.732422",
+ "modified_by": "ajay@skadits.com",
  "module": "Joel Living",
  "name": "Admin Message",
  "naming_rule": "Expression",

@@ -440,7 +440,7 @@
    "fieldname": "status",
    "fieldtype": "Select",
    "label": "Status",
-   "options": "Draft\nAwaiting Review\nApproved\nRejected"
+   "options": "Draft\nWaiting for Approval\nApproved\nRejected"
   },
   {
    "fieldname": "rejection_reason",
@@ -499,7 +499,7 @@
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-11-13 00:25:29.279753",
+ "modified": "2025-11-15 19:52:01.946113",
  "modified_by": "Administrator",
  "module": "Joel Living",
  "name": "Sales Registration Form",

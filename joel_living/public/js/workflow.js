@@ -1807,37 +1807,56 @@ show_sales_completion_dialog() {
         return collected_data;
     };
     const save_draft = () => {
-        const values = {};
-        for (let key in controls) {
-            const control = controls[key];
-            if (control && control.get_value) {
-                if (key === 'receipts') continue;
-                // Generic handling for all other field types
-                let val = control.get_value();
-                if (val === null || val === undefined) {
-                    val = '';
-                }
-                const is_meaningful = (String(val).length > 0) || (Array.isArray(val) && val.length > 0);
-                const is_ui_state_key = key === 'extra_joint_owners' || key === 'unit_floor' || key === 'screened_before_payment';
-                const is_joint_owner_key = key.startsWith('jo');
-                if (is_meaningful || is_ui_state_key || is_joint_owner_key) {
-                    values[key] = val;
-                }
+    const values = {};
+    for (let key in controls) {
+        const control = controls[key];
+        if (control && control.get_value) {
+            if (key === 'receipts') continue;
+            // Generic handling for all other field types
+            let val = control.get_value();
+            if (val === null || val === undefined) {
+                val = '';
+            }
+            // --- START UPDATED FIX: More reliable cleaning and saving logic ---
+            // Clean specific placeholder values to null
+            if (control.fieldtype === 'Phone' && (val === '+971-' || val === '+971')) {
+                val = null;
+            }
+            const valString = String(val).toLowerCase();
+            // Clean empty or literal 'null' strings to null
+            if (valString === 'null' || valString.trim() === '') {
+                 val = null;
+            }
+            // --- END UPDATED FIX ---
+            const is_meaningful = (val !== null); // A value is meaningful if it's not null
+            
+            // Define all keys whose state should be saved even if empty
+            const is_ui_state_key = key === 'extra_joint_owners' ||
+                                    key === 'unit_floor' ||
+                                    key === 'screened_before_payment' ||
+                                    key === 'booking_form_signed' ||
+                                    key === 'spa_signed';
+                                    
+            const is_joint_owner_key = key.startsWith('jo'); // Critical for saving dynamic JO fields
+            
+            if (is_meaningful || is_ui_state_key || is_joint_owner_key) {
+                values[key] = val;
             }
         }
-        // CRITICAL: Manually get and inject the custom table data.
-        const current_receipts_data = get_receipt_values();
-        if (current_receipts_data.length > 0) {
-            values.receipts = current_receipts_data;
-        }
-        // Only save to localStorage if there is data to save
-        if (Object.keys(values).length > 0) {
-            localStorage.setItem(DRAFT_KEY, JSON.stringify(values));
-        } else {
-            // If the form is empty, clear any old drafts
-            localStorage.removeItem(DRAFT_KEY);
-        }
-    };
+    }
+    // CRITICAL: Manually get and inject the custom table data.
+    const current_receipts_data = get_receipt_values();
+    if (current_receipts_data.length > 0) {
+        values.receipts = current_receipts_data;
+    }
+    // Only save to localStorage if there is data to save
+    if (Object.keys(values).length > 0) {
+        localStorage.setItem(DRAFT_KEY, JSON.stringify(values));
+    } else {
+        // If the form is empty, clear any old drafts
+        localStorage.removeItem(DRAFT_KEY);
+    }
+};
  
     const clear_draft = () => {
         localStorage.removeItem(DRAFT_KEY);
@@ -1867,12 +1886,21 @@ show_sales_completion_dialog() {
                         control.df.onchange = null;
                     }
                     let value_to_set = values[key];
-                    // --- FIX FOR link.js ERROR ---
+                    
+                    // --- CRITICAL FIX: AGGRESSIVE NULL/LINK CLEANING ---
+                    // Aggressively convert 'null' string to empty string for all Data, Phone, and Text fields
+                    if (['Data', 'Small Text', 'Phone'].includes(control.fieldtype) && 
+                        (String(value_to_set).toLowerCase() === 'null' || value_to_set === null)) 
+                    {
+                        value_to_set = ''; 
+                    }
+                    
                     // For Link fields, aggressively ensure the value is a string to prevent errors.
-                    // An empty string is safe; null, undefined, or other types are not.
                     if (control.fieldtype === 'Link') {
                         value_to_set = String(values[key] || '');
                     }
+                    // --- END CRITICAL FIX ---
+
                     // Set value and restore onchange handler
                     control.set_value(value_to_set);
                     if (original_onchange) {
@@ -1882,6 +1910,14 @@ show_sales_completion_dialog() {
                 // Manually trigger onchange for dynamic sections after their values are set
                 if (controls.extra_joint_owners && controls.extra_joint_owners.df.onchange) {
                     controls.extra_joint_owners.df.onchange();
+                }
+                 if (parseInt(values.extra_joint_owners) > 0 && controls.jo0_main_phone_number) {
+                    const jo0_phone_input = $(controls.jo0_main_phone_number.input);
+                    // We only care if the current visual state is broken from draft loading
+                    if (jo0_phone_input.val() === 'null') {
+                        jo0_phone_input.val('-'); // Set the visual part to '-'
+                        controls.jo0_main_phone_number.set_value('+971-'); // Clean the internal state
+                    }
                 }
                 // If project was in draft, re-fetch floor details to populate the options
                 if (is_project_in_draft && controls.unit_floor) {
@@ -1909,15 +1945,33 @@ show_sales_completion_dialog() {
                 }
             }, 300);
             // Secondary load for dynamically created Joint Owner fields
+            // Secondary load for dynamically created Joint Owner fields
             setTimeout(() => {
                 for (let key in values) {
+                    // This specifically targets the dynamic fields that start with 'jo'
                     if (key.startsWith('jo') && controls[key] && controls[key].set_value) {
-                        const value_to_set = String(values[key] || '');
-                        controls[key].set_value(value_to_set);
+                        const control = controls[key];
+                        let value_to_set = String(values[key] || '');
+                        
+                        // Local visual cleanup check
+                        if (String(value_to_set).toLowerCase() === 'null') {
+                            value_to_set = '';
+                        }
+                        
+                        // *** JOINT OWNER PHONE SPECIFIC VISUAL FIX ***
+                        if (control.fieldtype === 'Phone' && (value_to_set === '' || value_to_set === 'null')) {
+                            // Set with the desired visual prefix, and then ensure the visual input is clean
+                            control.set_value('');              // internal value is empty (not '+971-')
+                            $(control.input).val('');          // visible text empty (we'll use addon to show +971 and maybe a placeholder)
+                            $(control.input).attr('placeholder', '-');
+                        } else {
+                            // For all other JO fields (Names, Passport, Country), use the stored string value
+                            control.set_value(value_to_set);
+                        }
                     }
                 }
                 if(controls.screened_before_payment) $(controls.screened_before_payment.input).trigger('change');
-            }, 400);
+            }, 400); // Wait 400ms for controls to fully render and the 'onchange' of extra_joint_owners to complete rendering the JO controls.
             loaded = true;
         } else {
              // Logic for a new, clean dialog when no draft exists
@@ -2041,59 +2095,142 @@ const render_receipt_rows = () => {
     });
    
     // Logic for attach button
-    $placeholder.find('.add-file-btn').off('click').on('click', function() {
-        const $btn = $(this);
-        const index = parseInt($btn.data('index'));
-        frappe.prompt(
-            { label: __('Attach File'), fieldname: 'file_url', fieldtype: 'AttachImage'},
-            (values) => {
-                const file_url = values.file_url;
-                if (file_url) {
-                     const file_name_display = getFileName(file_url);
+    // Logic for attach button
+// Logic for attach button
+$placeholder.find('.add-file-btn').off('click').on('click', function() {
+    const $btn = $(this);
+    const index = parseInt($btn.data('index'));
+    const allowed_extensions = ['.pdf', '.jpg', '.jpeg', '.png'];
+
+    // 1. Create a hidden file input element on the fly.
+    const $file_input = $('<input type="file" class="hidden">');
+    
+    // 2. IMPORTANT: Set the 'accept' attribute to filter the file picker dialog.
+    $file_input.attr('accept', allowed_extensions.join(','));
+
+    // 3. Append it to the body so it's part of the DOM.
+    $('body').append($file_input);
+
+    // 4. Define what happens when the user selects a file.
+    $file_input.on('change', function(e) {
+        if (!this.files || this.files.length === 0) {
+            $file_input.remove(); // Cleanup if no file is chosen
+            return;
+        }
+
+        const file = this.files[0];
+        const file_name = file.name.toLowerCase();
+
+        // 5. Run our strict validation *before* uploading.
+        const is_valid = allowed_extensions.some(ext => file_name.endsWith(ext));
+
+        if (!is_valid) {
+            // If invalid, show a blocking error and stop everything.
+            frappe.msgprint({
+                title: __('Upload Blocked: Invalid File Type'),
+                indicator: 'red',
+                message: __('You can only upload PDF, JPG, or PNG files.')
+            });
+            $file_input.remove(); // Cleanup
+            return;
+        }
+
+        // 6. If the file is valid, use Frappe's uploader.
+        // This will show the "Uploading..." progress indicator.
+        frappe.upload.upload_file(file, {
+            callback: (attachment) => {
+                // The upload was successful. 'attachment' contains the file URL.
+                if (attachment && attachment.file_url) {
+                    // Update our data array with the new file URL
+                    receipts_data[index].receipt_proof = attachment.file_url;
                     
-                     // 1. Update the hidden URL input
-                     $btn.closest('tr').find('.receipts-proof').val(file_url);
-                     // 2. Update the central data array
-                     receipts_data[index].receipt_proof = file_url;
-                     // 3. Re-render the table to show the new clickable link instantly
-                     render_receipt_rows();
+                    // Re-render the table to show the new file link
+                    render_receipt_rows();
                 }
             },
-            __('Attach Receipt Proof')
-        );
+            onerror: () => {
+                // Handle any upload errors if necessary
+                frappe.msgprint(__('There was an error uploading your file. Please try again.'));
+            },
+            always: () => {
+                // 7. IMPORTANT: Always remove the hidden input after the process is complete.
+                $file_input.remove();
+            }
+        });
     });
+
+    // 8. Finally, programmatically click our hidden input to open the file picker for the user.
+    $file_input.trigger('click');
+});
 };
     // Function to set up the Data field to visually appear as a locked +971 phone number
-    const setup_uae_phone_data_control = (control) => {
-        const $input = $(control.input);
-        const prefix = '+971';
-       
-        setTimeout(() => {
-            let $input_group = $input.parent().is('.input-group') ? $input.parent() : null;
-           
-            if ($input.val() && $input.val().startsWith(prefix)) {
-                $input.val($input.val().replace(prefix, ''));
-            } else if (!$input.val()) {
-                $input.val('');
-            }
-           
-            if (!$input_group) {
-                 $input.wrap('<div class="input-group" style="width: 100%;"></div>');
-                 $input_group = $input.parent();
-            }
-            const $addon = $(`<span class="input-group-addon" style="font-weight: bold; background-color: #f7f9fa;">${prefix}</span>`);
+    // Function to set up the Data field to visually appear as a locked +971 phone number
+// Function to set up the Data field to visually appear as a locked +971 phone number
+const setup_uae_phone_data_control = (control) => {
+    const $input = $(control.input);
+    const prefix = '+971';
+
+    // Use a timeout to ensure the control is fully rendered in the DOM
+    setTimeout(() => {
+        let $input_group = $input.parent().is('.input-group') ? $input.parent() : null;
+
+        if (!$input_group) {
+             $input.wrap('<div class="input-group"></div>');
+             $input_group = $input.parent();
+        }
+
+        // Prevent adding the prefix addon multiple times
+        if ($input_group.find('.input-group-addon').length === 0) {
+            const $addon = $(`<span class="input-group-addon" style="font-weight: bold; background-color: #f7f9fa; padding: 4px;">${prefix}</span>`);
             $input.before($addon);
-            control.get_value = () => {
-                let value = $input.val().trim();
-                if (value && value !== prefix && !value.startsWith(prefix)) {
-                    return prefix + value;
-                } else if (value.startsWith(prefix)) {
-                    return value;
-                }
+        }
+
+        // --- START: DEFINITIVE FIX ---
+        // Store the original set_value function to call it internally
+        const original_setter = control.set_value.bind(control);
+
+        // 1. Override the 'set_value' function
+        // This controls how data is DISPLAYED to the user.
+        control.set_value = function(value) {
+            let display_value = '';
+            // Check if the value being set (e.g., from a draft) contains the prefix
+            if (value && typeof value === 'string' && value.startsWith(prefix)) {
+                // If it does, strip the prefix before showing it in the input box.
+                display_value = value.substring(prefix.length);
+            } else {
+                // Otherwise, use the value as is (handles nulls, etc.)
+                display_value = value || '';
+            }
+            // Use the original function to physically set the text in the input box.
+            original_setter(display_value);
+        };
+
+        // 2. Override the 'get_value' function
+        // This controls what data is SAVED.
+        control.get_value = function() {
+            // Get only the digits the user has typed from the input box.
+            const input_val = $input.val() ? $input.val().trim() : '';
+
+            // If the input box is empty, return an empty string.
+            // This is the CRITICAL part that prevents saving a default value.
+            if (!input_val) {
                 return '';
             }
-        }, 50);
-    }
+
+            // If the user has typed something, prepend the prefix to form the full number for saving.
+            return prefix + input_val;
+        };
+
+        // 3. Re-apply the initial value
+        // After redefining the functions, we need to format the control's current value correctly.
+        // We get the raw, unformatted value that Frappe initially set...
+        const raw_value_from_doc = control.doc ? control.doc[control.df.fieldname] : $input.val();
+        // ...and then call our NEW set_value function to format it correctly.
+        control.set_value(raw_value_from_doc);
+        // --- END: DEFINITIVE FIX ---
+
+    }, 100);
+};
    
     // **********************************************
     // * Custom Validation Functions
@@ -2105,6 +2242,15 @@ const render_receipt_rows = () => {
         const email_regex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
         if (!email_regex.test(value)) {
             return { passed: false, message: 'Please enter a valid email address.' };
+        }
+        return { passed: true, message: '' };
+    };
+    const validate_dob = (date_string) => {
+        if (!date_string) return { passed: true, message: '' };
+        const date_of_birth = moment(date_string, 'YYYY-MM-DD');
+        const now = moment().startOf('day');
+        if (date_of_birth.isAfter(now)) {
+            return { passed: false, message: 'Date of Birth cannot be a future date.' };
         }
         return { passed: true, message: '' };
     };
@@ -2134,6 +2280,14 @@ const render_receipt_rows = () => {
         }
         return { passed: true, message: '' };
     };
+    const validate_unit_number = (value) => {
+        if (!value) return { passed: true, message: '' };
+        // Allows alphanumeric, space, hyphen, and '#'
+        if (/[^a-zA-Z0-9\s#\-]/.test(value)) {
+            return { passed: false, message: 'Unit Number can only contain letters, numbers, spaces, hyphens, and the "#" symbol.' };
+        }
+        return { passed: true, message: '' };
+    };
 
     // NEW: Validate Main Phone Number (based on AE country code, 9 digits)
     const validate_main_phone = (value) => {
@@ -2145,7 +2299,81 @@ const render_receipt_rows = () => {
         }
         return { passed: true, message: '' };
     };
-   
+   // **********************************************
+// * NEW HELPER: Force File Type Validation
+// **********************************************
+// *******************************************************************
+// * DEFINITIVE HELPER: Force File Type Restrictions on Attach Fields
+// *******************************************************************
+// NEW: Validate Attachment File Type
+const validate_attachment = (file_url) => {
+    // This function checks if a given file URL has a valid extension.
+    if (!file_url) {
+        // If there's no file, it's not this function's job to say it's required.
+        // That's handled by the 'reqd' check. So we pass validation here.
+        return { passed: true, message: '' };
+    }
+    
+    const allowed_extensions = ['.pdf', '.jpg', '.jpeg', '.png'];
+    const file_name = file_url.toLowerCase();
+    
+    const is_valid = allowed_extensions.some(ext => file_name.endsWith(ext));
+    
+    if (!is_valid) {
+        // If the extension is not in our allowed list, fail validation.
+        return {
+            passed: false,
+            message: 'Invalid file type. Only PDF, JPG, and PNG are allowed.'
+        };
+    }
+    
+    // If the extension is valid, pass validation.
+    return { passed: true, message: '' };
+};
+const apply_strict_file_validation = (control) => {
+    // This function provides two layers of protection:
+    // 1. It sets the browser-native 'accept' attribute to filter the file picker dialog.
+    // 2. It adds an immediate 'change' event to validate the file in case the user bypasses the filter.
+
+    setTimeout(() => {
+        const $file_input = $(control.wrapper).find('input[type="file"]');
+        if (!$file_input.length) return; // Exit if the element isn't found
+
+        const allowed_types_string = '.pdf,.jpg,.jpeg,.png';
+        const allowed_extensions = ['.pdf', '.jpg', '.jpeg', '.png'];
+
+        // --- LAYER 1: NATIVE BROWSER FILTER ---
+        // This is the most important first step. It restricts the file selection dialog.
+        $file_input.attr('accept', allowed_types_string);
+
+        // --- LAYER 2: JAVASCRIPT VALIDATION BLOCKER ---
+        // We bind the event handler directly and immediately.
+        $file_input.off('change.filetype_blocker').on('change.filetype_blocker', function(e) {
+            if (!this.files || this.files.length === 0) {
+                return; // No file was selected
+            }
+
+            const file = this.files[0];
+            const file_name = file.name.toLowerCase();
+            const is_valid = allowed_extensions.some(ext => file_name.endsWith(ext));
+
+            if (!is_valid) {
+                // If the file is invalid, show a blocking error and reset the input.
+                frappe.msgprint({
+                    title: __('Upload Blocked: Invalid File Type'),
+                    indicator: 'red',
+                    message: __('You can only upload PDF, JPG, or PNG files. The selected file was not uploaded.')
+                });
+                
+                // CRITICAL: This clears the selection and stops the upload cold.
+                $(this).val('');
+                // This is necessary to ensure the 'change' event fires again if the user
+                // tries to upload the same invalid file twice.
+                return false;
+            }
+        });
+    }, 250); // A safe delay to ensure the control is fully rendered in the DOM.
+};
     // Global validation handler for individual controls - LOCAL ERROR DISPLAY (IMPROVED BLUR/CHANGE HANDLER)
     const attach_validation_onchange = (control, validation_func) => {
         if (!control) return;
@@ -2245,6 +2473,18 @@ const render_receipt_rows = () => {
         'width': '90vw'
     });
     const wrapper = $(dialog.body);
+    const alignment_fix_style = `
+        <style id="phone-alignment-fix-final">
+            .modal-body .frappe-control[data-fieldtype=Phone] .selected-phone {
+                /* Neutralize the top:calc(50%...) rule by forcing a top alignment */
+                top: 0 !important; /* Forces a high-priority top alignment */
+                transform: unset !important;
+            }
+        </style>
+    `;
+    if ($('#phone-alignment-fix-final').length === 0) {
+         $('head').append(alignment_fix_style);
+    }
     // REORGANIZED TABS HTML
     wrapper.html(`
         <div>
@@ -2280,17 +2520,54 @@ const render_receipt_rows = () => {
     <!-- END OF FIX -->
 </div>
                
-                <!-- 4. Screening & KYC (includes Joint Owner KYC) -->
+                <!-- 4. Screening & KYC (IMPROVED COMPACT LAYOUT) -->
                 <div class="tab-pane fade" id="tab-screening" role="tabpanel">
-                    <h4>Client Screening</h4><hr><div id="screening-section"></div>
-                    <div id="screening-yes-section" class="mt-3" style="display:none;"><div class="row"><div class="col-md-6"></div></div></div>
-                    <div id="screening-no-section" class="mt-3" style="display:none;"><div class="row"><div class="col-md-6"></div><div class="col-md-6"></div><div class="col-md-12"></div></div></div>
+                    <h4>Client Screening</h4><hr>
+                    
+                    <!-- MASTER ROW with 4 columns: Field 1 (Always Visible), Field 2/3 (Mutually Exclusive), Field 4 (Visible on No), Field 5 (Visible on No) -->
+                    <div class="row">
+                        <!-- 1. Main Select (Always visible - col-md-3) -->
+                        <div class="col-md-3" id="screen-q-col"></div> 
+                        
+                        <!-- 2 & 3. MUTUALLY EXCLUSIVE COLUMN (col-md-3) -->
+                        <div class="col-md-3">
+                            <div id="screen-yes-attach-wrap"></div> <!-- Inner div for Screenshot of green light -->
+                            <div id="screen-no-date-wrap"></div>  <!-- Inner div for Date/time of screening -->
+                        </div>
+
+                        <!-- 4. NO Conditional Select Field (col-md-3) -->
+                        <div class="col-md-3" id="screen-no-result-col"></div> 
+
+                        <!-- 5. NO Conditional Attach Field (col-md-3) -->
+                        <div class="col-md-3" id="screen-no-attach-col"></div> 
+                        
+                    </div>
+                    
+                    <!-- FULL-WIDTH REASON FIELD (Conditional on "No", sits on new line) -->
+                    <div id="screening-reason-row" class="row mt-2" style="display:none;">
+                        <div class="col-md-12" id="screen-reason-col"></div>
+                    </div>
+                   
+
                     <h4 class="mt-4">Main Client KYC Uploads</h4><hr>
-                    <div id="main-kyc-placeholder"></div>
+                    <!-- Main Client KYC: Refactored to 2-column layout -->
+                    <div id="main-kyc-placeholder" class="row">
+                        <div class="col-md-6" id="main-kyc-col-1"></div>
+                        <div class="col-md-6" id="main-kyc-col-2"></div>
+                    </div>
+
                     <h4 class="mt-4">Joint Owners KYC Uploads</h4><hr><div id="joint-owners-kyc-placeholder"></div>
                 </div>
                 <!-- 5. Remarks & Files -->
-                <div class="tab-pane fade" id="tab-remarks" role="tabpanel"><h4>Remarks (Optional)</h4><hr><div id="remarks-section"></div><h4 class="mt-4">Additional Files (Optional)</h4><hr><div id="files-section" class="row"><div class="col-md-6"></div><div class="col-md-6"></div></div></div>
+                <div class="tab-pane fade" id="tab-remarks" role="tabpanel">
+                    <div class="row">
+                        <div class="col-md-6" id="remarks-col-1"></div> <!-- for remark_title -->
+                        <div class="col-md-6" id="remarks-col-2"></div> <!-- for remark_files -->
+                    </div>
+                    
+                    <!-- Description on a separate row (Full Width) -->
+                    <div id="remarks-description-section"></div>                
+                <h4 class="mt-4">Additional Files (Optional)</h4><hr><div id="files-section" class="row"><div class="col-md-6"></div><div class="col-md-6"></div></div></div>
             </div>
         </div>
     `);
@@ -2312,8 +2589,8 @@ const render_receipt_rows = () => {
     make_control({ fieldname: 'last_name', label: 'Last Name', fieldtype: 'Data', reqd: 1 }, 'client-col-1');
     const main_email_control = make_control({ fieldname: 'email', label: 'Email', fieldtype: 'Data', options: 'Email', reqd: 1 }, 'client-col-1');
     attach_validation_onchange(main_email_control, validate_email);
-    make_control({ fieldname: 'date_of_birth', label: 'Date of Birth', fieldtype: 'Date', reqd: 1 }, 'client-col-1');
-    // Client Col 2
+const dob_control = make_control({ fieldname: 'date_of_birth', label: 'Date of Birth', fieldtype: 'Date', reqd: 1 }, 'client-col-1');
+    attach_validation_onchange(dob_control, validate_dob);    // Client Col 2
     const main_phone_control = make_control({
         fieldname: 'main_phone_number',
         label: 'Main Phone Number',
@@ -2335,6 +2612,38 @@ const render_receipt_rows = () => {
     // --------------------------------------------------------------------------
     // NEW: Attach phone validation for main_phone_number
     attach_validation_onchange(main_phone_control, validate_main_phone);
+    
+    // --------------------------------------------------------------------------
+    // NEW: Prevent browser hang on _ or other special characters in mobile number
+    // main_phone_control.input.on('input', e => {
+    //     const inputVal = e.target.value;
+    //     const isSpecialChar = inputVal.match(/[^a-zA-Z0-9\+\-\(\)\s]/g);
+    //     if (isSpecialChar) {
+    //         e.target.value = inputVal.replace(/[^a-zA-Z0-9\+\-\(\)\s]/g, '');
+    //     }
+    // });
+    // --------------------------------------------------------------------------
+    // Prevent error: TypeError: Cannot read properties of undefined (reading 'on')
+    if (main_phone_control && main_phone_control.input) {
+    main_phone_control.input.on('input', function(e) {
+        // Get the current value from the input field
+        const currentValue = $(this).val();
+
+        // Sanitize the value by removing all characters that are not digits or a plus sign.
+        // This is a much safer and more efficient way to clean phone number input.
+        const sanitizedValue = currentValue.replace(/[^0-9+]/g, '');
+
+        // CRITICAL: Only update the input field's value if it has actually changed.
+        // This check is what prevents the infinite loop and browser freeze.
+        if (currentValue !== sanitizedValue) {
+            $(this).val(sanitizedValue);
+        }
+    });
+}
+
+    // --------------------------------------------------------------------------
+    // NEW: Attach phone validation for main_phone_number
+    // attach_validation_onchange(main_phone_control, validate_main_phone);
 
     const uae_phone_control = make_control({ fieldname: 'uae_phone_number', label: 'UAE Phone Number', fieldtype: 'Data', description: 'Fixed to +971 for UAE' }, 'client-col-2');
     setup_uae_phone_data_control(uae_phone_control);
@@ -2347,8 +2656,8 @@ const render_receipt_rows = () => {
     const passport_expiry_control = make_control({ fieldname: 'passport_expiry_date', label: 'Passport Expiry Date', fieldtype: 'Date', reqd: 1 }, 'client-col-2');
     attach_validation_onchange(passport_expiry_control, validate_future_date);
    
-    make_control({ fieldname: 'passport_copy', label: 'Passport Copy (PDF/JPG/PNG)', fieldtype: 'Attach', reqd: 1, options: { accepted_file_types: ['.pdf', '.jpg', '.jpeg', '.png'], show_preview: true } }, 'client-col-2');
-   
+const passport_copy_control = make_control({ fieldname: 'passport_copy', label: 'Passport Copy (PDF/JPG/PNG)', fieldtype: 'Attach', reqd: 1 }, 'client-col-2');
+attach_validation_onchange(passport_copy_control, validate_attachment);
     // Client Col 3
     const country_origin_control = make_control({ fieldname: 'country_of_origin', label: 'Country of Origin', fieldtype: 'Link', options: 'Country', reqd: 1 }, 'client-col-3');
     attach_validation_onchange(country_origin_control, (v) => ({ passed: v, message: 'Country is required' }));
@@ -2407,16 +2716,24 @@ const render_receipt_rows = () => {
     make_control({ fieldname: 'unit_view', label: 'Unit View', fieldtype: 'Data', reqd: 1 }, 'unit-col-1');
    
     // Unit Col 2
-    make_control({ fieldname: 'developer_sales_rep', label: 'Developer Sales Representative', fieldtype: 'Link', options: 'User' }, 'unit-col-2');
-    make_control({ fieldname: 'unit_number', label: 'Unit Number', fieldtype: 'Data', reqd: 1 }, 'unit-col-2');
-    make_control({ fieldname: 'unit_type', label: 'Unit Type (e.g., 1BR, Studio)', fieldtype: 'Data', reqd: 1 }, 'unit-col-2');
+    make_control({ fieldname: 'developer_sales_rep', label: 'Developer Sales Representative', fieldtype: 'Link', options: 'Developer' }, 'unit-col-2');
+const unit_number_control = make_control({ fieldname: 'unit_number', label: 'Unit Number', fieldtype: 'Data', reqd: 1 }, 'unit-col-2');
+    attach_validation_onchange(unit_number_control, validate_unit_number); 
+        make_control({ fieldname: 'unit_type', label: 'Unit Type (e.g., 1BR, Studio)', fieldtype: 'Data', reqd: 1 }, 'unit-col-2');
     make_control({ fieldname: 'unit_price', label: 'Unit Price (AED)', fieldtype: 'Currency', reqd: 1 }, 'unit-col-2');
     make_control({ fieldname: 'unit_area', label: 'Unit Area (SQFT)', fieldtype: 'Float', reqd: 1 }, 'unit-col-2');
     // Unit Col 3
       
     make_control({ fieldname: 'booking_eoi_paid_amount', label: 'Booking/EOI Paid Amount (AED)', fieldtype: 'Currency', reqd: 1 }, 'unit-col-3');
     make_control({ fieldname: 'booking_form_signed', label: 'Booking Form Signed', fieldtype: 'Select', options: ['\nYes', '\nNo'], reqd: 1 }, 'unit-col-3');
-    make_control({ fieldname: 'booking_form_upload', label: 'Booking Form Upload', fieldtype: 'Attach' }, 'unit-col-3');
+    const booking_form_upload_control = make_control({ fieldname: 'booking_form_upload', label: 'Booking Form Upload', fieldtype: 'Attach' }, 'unit-col-3');
+attach_validation_onchange(booking_form_upload_control, validate_attachment);
+
+const spa_upload_control = make_control({ fieldname: 'spa_upload', label: 'SPA Upload', fieldtype: 'Attach' }, 'unit-col-3');
+attach_validation_onchange(spa_upload_control, validate_attachment);
+
+const soa_upload_control = make_control({ fieldname: 'soa_upload', label: 'SOA Upload', fieldtype: 'Attach' }, 'unit-col-3');
+attach_validation_onchange(soa_upload_control, validate_attachment);
     make_control({ fieldname: 'spa_signed', label: 'SPA Signed', fieldtype: 'Select', options: ['\nYes', '\nNo']}, 'unit-col-3');
     make_control({ fieldname: 'spa_upload', label: 'SPA Upload', fieldtype: 'Attach' }, 'unit-col-3');
     make_control({ fieldname: 'soa_upload', label: 'SOA Upload', fieldtype: 'Attach' }, 'unit-col-3');
@@ -2440,36 +2757,87 @@ const render_receipt_rows = () => {
     // }, 'receipts_table_placeholder');
    
     // Screening fields...
+   // ... (omitting fields up to screening)
+   
+    // Screening fields... (FIELD ASSIGNMENTS MAPPING TO NEW SHARED COLUMN LAYOUT)
+    
+    // 1. Main Select Control (3 units)
     const screening_select = make_control({
         fieldname: 'screened_before_payment',
         label: 'Is the client screened by admin before the first payment?',
         fieldtype: 'Select', options: ['', '\nYes', '\nNo'], reqd: 1
-    }, 'screening-section');
-    make_control({ fieldname: 'screenshot_of_green_light', label: 'Screenshot of green light', fieldtype: 'Attach', reqd: 1 }, 'screening-yes-section .col-md-6');
-    make_control({ fieldname: 'screening_date_time', label: 'Date and time of screening', fieldtype: 'Datetime', reqd: 1 }, 'screening-no-section .col-md-6:first-child');
-    make_control({ fieldname: 'screening_result', label: 'Results of screening', fieldtype: 'Select', options: ['\nGreen', '\nRed'], reqd: 1 }, 'screening-no-section .col-md-6:last-child');
-    make_control({ fieldname: 'screening_result', label: 'Result', fieldtype: 'Select', options: ['\nGreen', '\nRed'], reqd: 1 }, 'screening-no-section .col-md-12');
-    make_control({ fieldname: 'reason_for_late_screening', label: 'Reason for late screening', fieldtype: 'Small Text', reqd: 1 }, 'screening-no-section .col-md-12');
-    make_control({ fieldname: 'final_screening_screenshot', label: 'Screenshot of final screening result...', fieldtype: 'Attach', reqd: 1 }, 'screening-no-section .col-md-12');
- 
+    }, 'screen-q-col'); 
+    
+    // 2. Screenshot Attach Control (3 units - YES CONDITION - placed in wrap)
+    const screenshot_attach = make_control({ fieldname: 'screenshot_of_green_light', label: 'Screenshot of green light', fieldtype: 'Attach', reqd: 1 }, 'screen-yes-attach-wrap');
+attach_validation_onchange(screenshot_attach, validate_attachment); // <- TARGETING INNER WRAPPER
+
+    // 3. Datetime Field (3 units - NO CONDITION - placed in wrap)
+    const screening_date_time = make_control({ 
+        fieldname: 'screening_date_time', 
+        label: 'Date and time of screening', 
+        fieldtype: 'Datetime', 
+        reqd: 1 
+    }, 'screen-no-date-wrap'); // <- TARGETING INNER WRAPPER
+
+    // 4. Results Select Field (3 units - NO CONDITION)
+    const screening_result = make_control({ 
+        fieldname: 'screening_result', 
+        label: 'Results of screening', 
+        fieldtype: 'Select', 
+        options: ['\nGreen', '\nRed'], 
+        reqd: 1 
+    }, 'screen-no-result-col'); 
+
+    // 5. Screenshot Final Attach (3 units - NO CONDITION)
+    const final_screenshot_attach = make_control({ fieldname: 'final_screening_screenshot', label: 'Screenshot of final screening result...', fieldtype: 'Attach', reqd: 1 }, 'screen-no-attach-col');
+attach_validation_onchange(final_screenshot_attach, validate_attachment);
+    
+    // 6. Reason for Late Screening (Full width - NO CONDITION)
+    const reason_for_late_screening = make_control({ 
+        fieldname: 'reason_for_late_screening', 
+        label: 'Reason for late screening', 
+        fieldtype: 'Small Text', 
+        reqd: 1 
+    }, 'screen-reason-col');
+
+
+    // CONDITIONAL DISPLAY LOGIC - MUST BE UPDATED FOR NEW WRAPS
     $(screening_select.input).on('change', function() {
         const val = screening_select.get_value();
-        let show_yes = false, show_no = false;
-        if (val) {
-            const trimmed_val = val.trim();
-            if (trimmed_val === 'Yes') { show_yes = true; }
-            else if (trimmed_val === 'No') { show_no = true; }
-        }
-        wrapper.find('#screening-yes-section').toggle(show_yes);
-        wrapper.find('#screening-no-section').toggle(show_no);
+        const trimmed_val = (val || '').trim();
+        const show_yes = (trimmed_val === 'Yes');
+        const show_no = (trimmed_val === 'No');
+        
+        // 1. MUTUALLY EXCLUSIVE COLUMNS (Green Light vs. Date/Time)
+        wrapper.find('#screen-yes-attach-wrap').toggle(show_yes); // Only show Yes Attach when 'Yes'
+        wrapper.find('#screen-no-date-wrap').toggle(show_no);     // Only show No Datetime when 'No'
+
+        // 2. REMAINING 'NO' COLUMNS
+        wrapper.find('#screen-no-result-col').toggle(show_no);  
+        wrapper.find('#screen-no-attach-col').toggle(show_no);
+
+        // 3. Reason Row Visibility
+        wrapper.find('#screening-reason-row').toggle(show_no);
+        
+        // 4. Conditional Requirement Flag Setting (Essential for Validation)
+        // Set required to 1 only when section is active (important for hidden/disabled validation handling)
+        if (screenshot_attach) screenshot_attach.df.reqd = show_yes ? 1 : 0;
+        if (screening_date_time) screening_date_time.df.reqd = show_no ? 1 : 0;
+        if (screening_result) screening_result.df.reqd = show_no ? 1 : 0;
+        if (final_screenshot_attach) final_screenshot_attach.df.reqd = show_no ? 1 : 0;
+        if (reason_for_late_screening) reason_for_late_screening.df.reqd = show_no ? 1 : 0;
+        
     }).trigger('change');
+// ... (rest of the file is complete and correct)
     // Remarks & Files fields...
-    make_control({ fieldname: 'remark_title', label: 'Title', fieldtype: 'Data' }, 'remarks-section');
-    make_control({ fieldname: 'remark_description', label: 'Description', fieldtype: 'Small Text' }, 'remarks-section');
-    make_control({ fieldname: 'remark_files', label: 'Attachments', fieldtype: 'Attach' }, 'remarks-section');
-    make_control({ fieldname: 'additional_file_title', label: 'File Title', fieldtype: 'Data' }, 'files-section .col-md-6:first-child');
-    make_control({ fieldname: 'additional_file_upload', label: 'File Upload', fieldtype: 'Attach' }, 'files-section .col-md-6:last-child');
-   
+    make_control({ fieldname: 'remark_title', label: 'Title', fieldtype: 'Data' }, 'remarks-col-1');
+const remark_files_control = make_control({ fieldname: 'remark_files', label: 'Attachments', fieldtype: 'Attach' }, 'remarks-col-2');
+attach_validation_onchange(remark_files_control, validate_attachment); 
+   make_control({ fieldname: 'remark_description', label: 'Description', fieldtype: 'Small Text' }, 'remarks-description-section');
+    make_control({ fieldname: 'file_title', label: 'File Title', fieldtype: 'Data' }, 'files-section .col-md-6:first-child');
+const additional_file_upload_control = make_control({ fieldname: 'file_upload', label: 'File Upload', fieldtype: 'Attach' }, 'files-section .col-md-6:last-child');
+attach_validation_onchange(additional_file_upload_control, validate_attachment);   
    
     // RENDER DYNAMIC FIELDS
     const render_dynamic_fields = () => {
@@ -2488,8 +2856,11 @@ const render_receipt_rows = () => {
                     <div class="panel-group" id="jo-accordion-${i}" role="tablist" aria-multiselectable="true">
                         <div class="panel panel-default">
                             <div class="panel-heading" role="tab" id="heading-${collapse_id}" style="padding: 10px; cursor: pointer; background-color: #f7f9fa; border-bottom: 1px solid #d1d8dd;">
-                                <h5 class="panel-title" data-toggle="collapse" data-parent="#jo-accordion-${i}" href="#${collapse_id}" aria-expanded="true" aria-controls="${collapse_id}">
-                                    Joint Owner ${owner_num} Details
+                                 <h5 class="panel-title collapsed" data-toggle="collapse" data-parent="#jo-accordion-${i}" href="#${collapse_id}" aria-expanded="false" aria-controls="${collapse_id}">
+                                    <i class="fa fa-user mr-1"></i> Joint Owner ${owner_num} Details
+                                    <span class="pull-down">
+                                        <i class="fa fa-caret-down panel-collapse-indicator-${collapse_id}"></i>
+                                    </span>
                                 </h5>
                             </div>
                             <div id="${collapse_id}" class="panel-collapse collapse joint-owner-wrapper" role="tabpanel" aria-labelledby="heading-${collapse_id}" data-idx="${i}" style="padding:15px; border:1px solid #d1d8dd; border-top: none;">
@@ -2504,6 +2875,7 @@ const render_receipt_rows = () => {
                     </div>
                 `);
                 owners_placeholder.append(owner_section);
+                
                 // * End Collapsible Setup *
                 // *** KYC Section Setup (in Screening & KYC Tab) ***
                 const kyc_html = $(`<div class="kyc-section joint-owner-kyc-wrapper row mt-3" data-idx="${i}"><div class="col-md-12"><h6>KYC for Joint Owner ${owner_num}</h6></div><div class="col-md-6" id="${prefix}_kyc_date"></div><div class="col-md-6" id="${prefix}_kyc_file"></div></div>`);
@@ -2514,8 +2886,8 @@ const render_receipt_rows = () => {
                 make_control({ fieldname: `${prefix}_last_name`, label: 'Last Name', fieldtype: 'Data', reqd: 1 }, `${prefix}_col1`);
 const jo_email_control = make_control({ fieldname: `${prefix}_email`, label: 'Email', fieldtype: 'Data', options: 'Email', reqd: 1 }, `${prefix}_col1`);
 attach_validation_onchange(jo_email_control, validate_email);
-                make_control({ fieldname: `${prefix}_date_of_birth`, label: 'Date of Birth', fieldtype: 'Date', reqd: 1 }, `${prefix}_col1`);
-                // Column 2
+const jo_dob_control = make_control({ fieldname: `${prefix}_date_of_birth`, label: 'Date of Birth', fieldtype: 'Date', reqd: 1 }, `${prefix}_col1`);
+                attach_validation_onchange(jo_dob_control, validate_dob)                // Column 2
                 const jo_phone_control = make_control({
                     fieldname: `${prefix}_main_phone_number`,
                     label: 'Main Phone Number',
@@ -2529,13 +2901,34 @@ attach_validation_onchange(jo_email_control, validate_email);
                 }, `${prefix}_col2`);
                 // Set default +971- for Joint Owner Phone
                 setTimeout(() => {
-                    // Check if the control exists AND its current value is not set
-                    if (jo_phone_control && !jo_phone_control.get_value()) {
-                        jo_phone_control.set_value('+971-');
-                    }
-                }, 50);
+                    if (jo_phone_control) {
+                        // $(jo_phone_control.wrapper).find('.input-with-feedback').css({'vertical-align': 'top', 'line-height': 'normal', 'padding': '0px'});
+                        // $(jo_phone_control.wrapper).find('.form-control').css('height', '36px');
+                        // assign original getter safely
+                        jo_phone_control._original_get_value = jo_phone_control.get_value.bind(jo_phone_control);
+
+                        // robust getter: return '' for placeholder/corrupt states (avoid returning null)
+                        jo_phone_control.get_value = () => {
+                            let val = jo_phone_control._original_get_value();
+                            if (val === undefined || val === null) return '';
+                            const valString = String(val).trim().toLowerCase();
+                            if (valString === 'null' || valString === '+971-' || valString === '+971' || valString.includes('null')) {
+                                return '';
+                            }
+                            return val;
+                        };
+
+                        // prefer true-empty internal state — don't set internal to '+971-' placeholder
+                        if (!jo_phone_control.get_value()) {
+                            jo_phone_control.set_value('');            // internal value empty
+                            $(jo_phone_control.input).val('');        // visible input empty; the UI +971 addon will show prefix
+                            $(jo_phone_control.input).attr('placeholder', '-'); // optional hint
+                        }
+
+    }
+}, 50);
                 // NEW: Attach main phone validation for joint owner
-                attach_validation_onchange(jo_phone_control, validate_main_phone);
+                // attach_validation_onchange(jo_phone_control, validate_main_phone);
 
                 const jo_uae_phone_control = make_control({ fieldname: `${prefix}_uae_phone_number`, label: 'UAE Phone Number', fieldtype: 'Data', description: 'Fixed to +971 for UAE' }, `${prefix}_col2`);
                 setup_uae_phone_data_control(jo_uae_phone_control);
@@ -2548,8 +2941,8 @@ attach_validation_onchange(jo_email_control, validate_email);
                 const jo_passport_expiry_control = make_control({ fieldname: `${prefix}_passport_expiry_date`, label: 'Passport Expiry Date', fieldtype: 'Date', reqd: 1 }, `${prefix}_col2`);
                 attach_validation_onchange(jo_passport_expiry_control, validate_future_date);
                
-                make_control({ fieldname: `${prefix}_passport_copy`, label: 'Passport Copy (PDF/JPG/PNG)', fieldtype: 'Attach', reqd: 1, options: { accepted_file_types: ['.pdf', '.jpg', '.jpeg', '.png'], show_preview: true } }, `${prefix}_col2`);
-                // Column 3
+const jo_passport_copy_control = make_control({ fieldname: `${prefix}_passport_copy`, label: 'Passport Copy (PDF/JPG/PNG)', fieldtype: 'Attach', reqd: 1 }, `${prefix}_col2`);
+attach_validation_onchange(jo_passport_copy_control, validate_attachment);                // Column 3
                 const jo_country_origin_control = make_control({ fieldname: `${prefix}_country_of_origin`, label: 'Country of Origin', fieldtype: 'Link', options: 'Country', reqd: 1 }, `${prefix}_col3`);
                 attach_validation_onchange(jo_country_origin_control, (v) => ({ passed: v, message: 'Country is required' }));
                 const jo_country_residence_control = make_control({ fieldname: `${prefix}_country_of_residence`, label: 'Country of Residence', fieldtype: 'Link', options: 'Country', reqd: 1 }, `${prefix}_col3`);
@@ -2562,8 +2955,8 @@ attach_validation_onchange(jo_email_control, validate_email);
                
                 // KYC placeholders (in the Screening & KYC Tab)
                 const kyc_date_control = make_control({ fieldname: `${prefix}_kyc_date`, label: 'Date of KYC Entry', fieldtype: 'Date', reqd: 1 }, `${prefix}_kyc_date`);
-                const kyc_file_control = make_control({ fieldname: `${prefix}_kyc_file`, label: 'KYC File Upload', fieldtype: 'Attach', reqd: 1, options: { accepted_file_types: ['.pdf', '.jpg', '.jpeg', '.png'], show_preview: true } }, `${prefix}_kyc_file`);
-               
+                const kyc_file_control = make_control({ fieldname: `${prefix}_kyc_file`, label: 'KYC File Upload', fieldtype: 'Attach', reqd: 1 }, `${prefix}_kyc_file`);
+                attach_validation_onchange(kyc_file_control, validate_attachment);
                 // P1 FIX: Attach Live Validation to ALL newly created controls
                 const new_owner_controls = [
                     `${prefix}_first_name`, `${prefix}_last_name`, `${prefix}_email`, `${prefix}_date_of_birth`,
@@ -2690,141 +3083,157 @@ function attachLiveValidation(control) {
    
     // 3. Define the bottom button (Create Registration) - Primary Action
     dialog.set_primary_action(__("Create Registration"), () => {
-        const values = {};
-        let first_invalid_control = null;
-        let is_valid = true;
-         receipts_data = get_receipt_values();
-        // Clear any previous error messages and borders from custom and primary validation
-        wrapper.find(".field-error").remove();
-        wrapper.find(".local-error-message").remove();
-        wrapper.find('input, select, textarea').css('border-color', '');
-        wrapper.find('.attach-button').closest('.input-with-feedback').css('border-color', '');
-        wrapper.find('.select-container').css('border', '');
-       
-        // --- FIX: Conditional Required State Check ---
-        const screening_status_val = controls.screened_before_payment ? (controls.screened_before_payment.get_value() || '').trim() : '';
-        const is_yes_required = screening_status_val === 'Yes';
-        const is_no_required = screening_status_val === 'No';
-       
-        // Fields that are conditionally required
-        const YES_FIELDS = ['screenshot_of_green_light'];
-        const NO_FIELDS = ['screening_date_time', 'screening_result', 'reason_for_late_screening', 'final_screening_screenshot'];
-        // Loop through all controls in dialog (Validation Check)
-        for (let key in controls) {
-            if (controls[key]) {
-                const control = controls[key];
-                const value = control.get_value();
-                let failed_validation = false;
-                let validation_message = "";
-                // --- 1. Custom Field Validations (Check BEFORE required if present) ---
-                let custom_validation_result = { passed: true, message: "" };
-                if (key.endsWith('passport_expiry_date') && value) {
-                     custom_validation_result = validate_future_date(value);
-                } else if (key.endsWith('passport_number') && value) {
-                     custom_validation_result = validate_passport_chars(value);
+    const values = {};
+    let first_invalid_control = null;
+    let is_valid = true;
+     receipts_data = get_receipt_values();
+    // Clear any previous error messages and borders
+    wrapper.find(".field-error").remove();
+    wrapper.find(".local-error-message").remove();
+    wrapper.find('input, select, textarea').css('border-color', '');
+    wrapper.find('.attach-button').closest('.input-with-feedback').css('border-color', '');
+    wrapper.find('.select-container').css('border', '');
+
+    // --- Conditional Required State Check ---
+    const screening_status_val = controls.screened_before_payment ? (controls.screened_before_payment.get_value() || '').trim() : '';
+    const is_yes_required = screening_status_val === 'Yes';
+    const is_no_required = screening_status_val === 'No';
+
+    const YES_FIELDS = ['screenshot_of_green_light'];
+    const NO_FIELDS = ['screening_date_time', 'screening_result', 'reason_for_late_screening', 'final_screening_screenshot'];
+
+    // Loop through all controls in dialog (Validation Check)
+    for (let key in controls) {
+        if (controls[key]) {
+            const control = controls[key];
+            const value = control.get_value();
+            let failed_validation = false;
+            let validation_message = "";
+
+            // --- 1. Custom Field Validations ---
+            // (This block is already correct and remains unchanged)
+            let custom_validation_result = { passed: true, message: "" };
+            if (key.endsWith('passport_expiry_date') && value) { custom_validation_result = validate_future_date(value); }
+            else if (key.endsWith('passport_number') && value) { custom_validation_result = validate_passport_chars(value); }
+            else if ((key === 'date_of_birth' || key.endsWith('_date_of_birth')) && value) { custom_validation_result = validate_dob(value); }
+            else if (key === 'unit_number' && value) { custom_validation_result = validate_unit_number(value); }
+            else if ((key === 'email' || key.endsWith('_email')) && value) { custom_validation_result = validate_email(value); }
+            else if (key === 'final_screening_screenshot' && value) { custom_validation_result = validate_attachment(value); }
+            else if (key === 'screenshot_of_green_light' && value) { custom_validation_result = validate_attachment(value); }
+            
+            else if ((key === 'uae_phone_number' || key.endsWith('_uae_phone_number')) && value) { custom_validation_result = validate_uae_phone(value); }
+            else if (key.endsWith('passport_copy') && value) { custom_validation_result = validate_attachment(value); }
+            else if (key === 'spa_upload' && value) { custom_validation_result = validate_attachment(value); }
+            else if (key === 'soa_upload' && value) { custom_validation_result = validate_attachment(value); }
+            else if (key === 'remark_files' && value) { custom_validation_result = validate_attachment(value); }
+            else if (key === 'additional_file_upload' && value) { custom_validation_result = validate_attachment(value); }
+            else if (key === 'main_client_kyc_file' && value) { custom_validation_result = validate_attachment(value); }
+            else if (key === 'booking_form_upload' && value) { custom_validation_result = validate_attachment(value); }
+            else if (key === 'jo0_kyc_file' && value) { custom_validation_result = validate_attachment(value); }
+            else if (key === 'jo1_kyc_file' && value) { custom_validation_result = validate_attachment(value); }
+            else if (key === 'jo2_kyc_file' && value) { custom_validation_result = validate_attachment(value); }
+          
+            if (!custom_validation_result.passed) {
+                failed_validation = true;
+                validation_message = custom_validation_result.message;
+            }
+
+            // --- 2. Required Field Validation ---
+            if (!failed_validation && control.df.reqd) {
+                let is_empty = false;
+                const trimmed_value = String(value || '').trim();
+
+                if (!value || (Array.isArray(value) && value.length === 0)) {
+                    is_empty = true;
+                } else if (control.fieldtype === 'Phone' && (trimmed_value === '+971-' || trimmed_value === '+971')) {
+                    is_empty = true;
                 }
-               
-                if (!custom_validation_result.passed) {
+
+                let should_check_required = true;
+                if ((YES_FIELDS.includes(key) && !is_yes_required) || (NO_FIELDS.includes(key) && !is_no_required)) {
+                    should_check_required = false;
+                }
+
+                if (should_check_required && is_empty) {
                     failed_validation = true;
-                    validation_message = custom_validation_result.message;
+                    validation_message = "This field is required.";
                 }
-               
-                // --- 2. Required Field Validation (If custom validation hasn't already failed) ---
-                if (!failed_validation && control.df.reqd)
-                {
-                    const trimmed_value = String(value || '').trim();
-                    let is_empty = (value === undefined || value === null || trimmed_value === "" || (Array.isArray(value) && value.length === 0));
-                    if ((control.fieldtype === 'Phone' || key === 'main_phone_number' || key.endsWith('_phone_number')) && (trimmed_value === '+971-' || trimmed_value === '+971')) {
-                        is_empty = true;
-                    }
-                   
-                    if (control.fieldtype === 'Select' && (value === undefined || value === null || trimmed_value === "" || trimmed_value === "null")) {
-                         if (!value || (typeof value === 'string' && value.trim() === '')) {
-                             is_empty = true;
-                         } else {
-                             is_empty = false;
-                         }
-                    }
-                    let should_check_required = true;
-                    if (YES_FIELDS.includes(key) && !is_yes_required) {
-                        should_check_required = false;
-                    } else if (NO_FIELDS.includes(key) && !is_no_required) {
-                        should_check_required = false;
-                    }
-                    if (should_check_required && is_empty) {
-                        failed_validation = true;
-                        validation_message = "This field is required.";
-                    }
-                }
-               
-                // --- 3. Handle Failure: Apply UI Error and Log First Invalid Control ---
-                if (failed_validation) {
-                    is_valid = false;
-                    const $wrapper = $(control.wrapper);
-                    $wrapper.find('.field-error, .local-error-message').remove();
-                    $wrapper.append(`<div class="field-error local-error-message" style="color: red; font-size: 11px; margin-top: 5px;">${validation_message}</div>`);
-                   
-                    const $target_border = (control.fieldtype === 'Attach')
-                        ? $wrapper.find('.attach-button').closest('.input-with-feedback')
-                        : ($(control.input).length ? $(control.input) : $wrapper.find('.control-input'));
-                    if (control.fieldtype === 'Select') {
-                         $wrapper.find('.select-container').css('border', '1px solid red');
-                    } else {
-                         $target_border.css('border-color', 'red');
-                    }
-                   
-                    if (!first_invalid_control) {
-                        first_invalid_control = control;
-                    }
-                }
-                // Collect values
-                values[key] = value;
             }
+
+            // --- 3. Handle Failure: Apply UI Error ---
+            if (failed_validation) {
+                is_valid = false;
+                const $wrapper = $(control.wrapper);
+                $wrapper.find('.field-error, .local-error-message').remove(); // Clear old errors
+
+                const error_html = `<div class="field-error local-error-message" style="color: red; font-size: 11px; margin-top: 5px;">${validation_message}</div>`;
+
+                // --- START: DEFINITIVE FIX FOR ERROR MESSAGE PLACEMENT ---
+                if (control.fieldtype === 'Attach') {
+                    // For Attach fields, append the error directly to the 'control-input-wrapper'
+                    // This ensures it appears right below the attach button and file link.
+                    $wrapper.find('.control-input-wrapper').append(error_html);
+                } else {
+                    // For all other field types, appending to the main wrapper is correct.
+                    $wrapper.append(error_html);
+                }
+                // --- END: DEFINITIVE FIX FOR ERROR MESSAGE PLACEMENT ---
+
+                // This logic for applying the red border is correct.
+                const $target_border = (control.fieldtype === 'Attach')
+                    ? $wrapper.find('.attach-button').closest('.input-with-feedback')
+                    : ($(control.input).length ? $(control.input) : $wrapper.find('.control-input'));
+
+                if (control.fieldtype === 'Select') {
+                    $wrapper.find('.select-container').css('border', '1px solid red');
+                } else {
+                    $target_border.css('border-color', 'red');
+                }
+
+                if (!first_invalid_control) {
+                    first_invalid_control = control;
+                }
+            }
+            values[key] = value;
         }
-        // REMOVED: Mandatory receipts check (now optional)
-        // Optional validation for existing receipts (warn but don't block if rows have issues)
-        if (receipts_data.length > 0) {
-             receipts_data.forEach((row, index) => {
-                const row_num = index + 1;
-                // You must update the HTML in render_receipt_rows to show errors here
-                // For simplicity, this validation only blocks submission
-                if (!row.receipt_date) {
-                    is_valid = false;
-                    frappe.show_alert({ message: `Row #${row_num}: Date is required.`, indicator: "red" });
-                }
-                if (!row.receipt_amount || parseFloat(row.receipt_amount) <= 0) {
-                    is_valid = false;
-                    frappe.show_alert({ message: `Row #${row_num}: Amount must be a positive number.`, indicator: "red" });
-                }
-                if (!row.receipt_proof) {
-                    is_valid = false;
-                    frappe.show_alert({ message: `Row #${row_num}: Proof of Payment is required.`, indicator: "red" });
-                }
-             });
-        }
-        // END OF NEW VALIDATION BLOCK
-        // --- FINAL CHECK AND ACTION ---
-        values.receipts = receipts_data;
-        if (!is_valid) { // Block submission if validation failed
+    }
+
+    // --- FINAL CHECK AND ACTION ---
+    values.receipts = receipts_data;
+    if (!is_valid) { // Block submission if validation failed
             const control = first_invalid_control;
-            const joint_owner_wrapper = $(control.wrapper).closest('.joint-owner-wrapper');
-            if (joint_owner_wrapper.length) {
-                const collapse_id = joint_owner_wrapper.attr('id');
-                $(`#${collapse_id}`).collapse('show');
-            }
-            const tab_pane = $(control.wrapper).closest('.tab-pane');
-            if (tab_pane.length) {
-                const tab_id = tab_pane.attr('id');
-                const tab_link = wrapper.find(`.nav-link[data-target="#${tab_id}"]`);
-                if (tab_link.length && !tab_link.hasClass('active')) {
-                    tab_link.trigger('click');
+            
+            // --- NEW/UPDATED FIX: COLLAPSE AND SCROLL/FOCUS LOGIC ---
+            if (control) {
+                // Check if the field is inside a dynamic joint owner collapsible wrapper
+                const joint_owner_wrapper = $(control.wrapper).closest('.joint-owner-wrapper');
+                const tab_pane = $(control.wrapper).closest('.tab-pane');
+                
+                // 1. Show the parent JO collapsible section if needed
+                if (joint_owner_wrapper.length) {
+                    const collapse_id = joint_owner_wrapper.attr('id');
+                    $(`#${collapse_id}`).collapse('show'); // Opens the specific joint owner panel
+                }
+                
+                // 2. Switch to the parent Tab
+                if (tab_pane.length) {
+                    const tab_id = tab_pane.attr('id');
+                    const tab_link = wrapper.find(`.nav-link[data-target="#${tab_id}"]`);
+                    if (tab_link.length && !tab_link.hasClass('active')) {
+                        tab_link.trigger('click'); // Switches the tab
+                    }
                 }
             }
+
+            // Scroll and focus on the first invalid field
             setTimeout(() => {
-                 frappe.utils.scroll_to($(control.wrapper), true, 150);
-                 if (control.input) control.input.focus();
-                 else control.set_focus();
-            }, 300);
+                 if (control) {
+                    frappe.utils.scroll_to($(control.wrapper), true, 150);
+                    // Use focus on input, otherwise fallback to generic set_focus
+                    if (control.input && $(control.input).is(':visible')) control.input.focus();
+                    else control.set_focus();
+                 }
+            }, 500); // Increased timeout to 500ms to allow collapse/tab animation to finish
             return;
         }
         const confirm_dialog = new frappe.ui.Dialog({
@@ -2877,10 +3286,9 @@ function attachLiveValidation(control) {
     });
     dialog.show();
     // Create Main Client KYC only ONCE in its own safe placeholder
-    make_control({ fieldname: `main_client_kyc_date`, label: 'Date of KYC Entry', fieldtype: 'Date', reqd: 1 }, 'main-kyc-placeholder');
-    make_control({ fieldname: `main_client_kyc_file`, label: 'KYC File Upload', fieldtype: 'Attach', reqd: 1, options: { accepted_file_types: ['.pdf', '.jpg', '.jpeg', '.png'], show_preview: true } }, 'main-kyc-placeholder');
-   
-    // Create the joint owner select control and attach its event handler
+   make_control({ fieldname: `main_client_kyc_date`, label: 'Date of KYC Entry', fieldtype: 'Date', reqd: 1 }, 'main-kyc-col-1'); // <- CHANGED TARGET ID
+const main_kyc_file_control = make_control({ fieldname: `main_client_kyc_file`, label: 'KYC File Upload', fieldtype: 'Attach', reqd: 1 }, 'main-kyc-col-2');
+attach_validation_onchange(main_kyc_file_control, validate_attachment);    // Create the joint owner select control and attach its event handler
     const joint_owners_wrapper = wrapper.find('#joint-owners-section');
     joint_owners_wrapper.append('<div class="row"><div class="col-md-4" id="joint-owners-select"></div></div><div id="joint-owners-placeholder"></div>');
     make_control({fieldname: 'extra_joint_owners', label: 'Number of Additional Joint Owners', fieldtype: 'Select', options: '0\n1\n2\n3'}, 'joint-owners-select');

@@ -1,6 +1,7 @@
 {
  "actions": [],
- "autoname": "autoincrement",
+ "allow_rename": 1,
+ "autoname": "format:DEV-{#}",
  "creation": "2025-11-03 22:23:43.740253",
  "doctype": "DocType",
  "engine": "InnoDB",
@@ -25,11 +26,11 @@
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-11-09 20:08:39.879757",
+ "modified": "2025-11-14 21:07:19.403621",
  "modified_by": "Administrator",
  "module": "Joel Living",
  "name": "Developer",
- "naming_rule": "Autoincrement",
+ "naming_rule": "Expression",
  "owner": "Administrator",
  "permissions": [
   {

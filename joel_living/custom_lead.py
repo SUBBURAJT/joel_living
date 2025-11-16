@@ -1,6 +1,10 @@
 from frappe.share import add, get_users, remove
 import frappe
 from datetime import datetime, timedelta
+from joel_living.email import send_custom_email
+from frappe.utils.background_jobs import enqueue
+
+
 
 def after_insert_lead(doc, method):
     # Always share and set custom_complete_before for new records
@@ -861,7 +865,7 @@ def create_sales_registration(lead_name, data):
     try:
         # 1. The data from JS comes as a dictionary (or a JSON string that Frappe auto-converts)
         form_data = data if isinstance(data, dict) else frappe.parse_json(data)
-        print(form_data)
+        # print(form_data)
         # 2. Create a new document for "Sales Registration Form"
         doc = frappe.new_doc("Sales Registration Form")
         doc.lead = lead_name
@@ -1145,80 +1149,196 @@ def create_sales_registration(lead_name, data):
 #         frappe.throw(str(e)) # Generic error re-raise
 
 
+# import frappe
+# from frappe.model.document import Document
+# @frappe.whitelist()
+# def update_sales_registration_details(doc_name: str, data: str):
+#     print("update_sales_registration_details", doc_name, data)
+#     # print(doc_name)
+#     # print(data)
+#     """
+#     Updates a Sales Registration Form document with new values, including child tables.
+#     :param doc_name: The name of the Sales Registration Form to update.
+#     :param data: A JSON string containing the fields to update.
+#     """
+#     try:
+#         # Decode the incoming data from JSON string to a Python dictionary
+#         update_data = frappe.parse_json(data)
+
+#         # Load the existing document
+#         doc = frappe.get_doc("Sales Registration Form", doc_name)
+        
+#         # Check permissions and document status (only drafts can be heavily modified)
+#         if not doc.has_permission("write"):
+#             frappe.throw("You do not have permission to write to this document.", frappe.PermissionError)
+
+#         if doc.docstatus != 0:
+#             # For submitted docs, you might only allow certain fields to be changed
+#             # For this example, we only allow changes if it's a draft.
+#             frappe.throw("Only draft documents can be edited in this manner.")
+            
+#         # Update main document fields (excluding child tables)
+#         main_fields = {k: v for k, v in update_data.items() if k not in ['joint_owners', 'remarks', 'receipts', 'additional_files']}
+#         doc.update(main_fields)
+
+#         # Handle joint_owners child table
+#         if "joint_owners" in update_data:
+#             doc.set("joint_owners", [])  # Clear existing child table entries
+#             for owner_entry in update_data["joint_owners"]:
+#                 doc.append("joint_owners", owner_entry)
+
+#         # Handle remarks child table
+#         if "remarks" in update_data:
+#             doc.set("remarks", [])  # Clear existing child table entries
+#             for remark_entry in update_data["remarks"]:
+#                 doc.append("remarks", {
+#                     "remark_title": remark_entry.get("remark_title"),
+#                     "remark_description": remark_entry.get("remark_description"),
+#                     "attachments": remark_entry.get("attachments"),
+#                 })
+
+#         # Handle receipts child table
+#         if "receipts" in update_data:
+#             doc.set("receipts", [])  # Clear existing child table entries
+#             for receipt_entry in update_data["receipts"]:
+#                 doc.append("receipts", {
+#                     "receipt_date": receipt_entry.get("receipt_date"),
+#                     "amount": receipt_entry.get("amount"),
+#                     "receipt_file": receipt_entry.get("receipt_file"),
+#                 })
+
+#         # If 'additional_files' child table data is present, update it
+#         if "additional_files" in update_data:
+#             doc.set("additional_files", []) # Clear existing child table entries
+#             for file_entry in update_data["additional_files"]:
+#                 doc.append("additional_files", {
+#                     "file_title": file_entry.get("file_title"),
+#                     "file_upload": file_entry.get("file_upload"),
+#                 })
+        
+#         # Save the document to the database
+#         doc.save(ignore_permissions=True) # Permissions already checked
+
+#         return doc.as_dict()
+
+#     except Exception as e:
+#         frappe.log_error(frappe.get_traceback(), "Sales Registration Update Error")
+#         frappe.throw(f"An error occurred while saving: {e}")
+
+
+
+
+
 import frappe
 from frappe.model.document import Document
+import json
+
 @frappe.whitelist()
 def update_sales_registration_details(doc_name: str, data: str):
-    print(doc_name)
-    print(data)
+    print("update_sales_registration_details", doc_name, data)
     """
     Updates a Sales Registration Form document with new values, including child tables.
+    This version handles child table updates correctly by leveraging Frappe's ORM.
+
     :param doc_name: The name of the Sales Registration Form to update.
     :param data: A JSON string containing the fields to update.
     """
     try:
-        # Decode the incoming data from JSON string to a Python dictionary
-        update_data = frappe.parse_json(data)
+        # The `data` argument from `frappe.call` might be a dict if Content-Type is JSON,
+        # or a string if it's form-urlencoded. Safely handle both cases.
+        if isinstance(data, str):
+            update_data = json.loads(data)
+        else:
+            update_data = data
 
-        # Load the existing document
         doc = frappe.get_doc("Sales Registration Form", doc_name)
         
-        # Check permissions and document status (only drafts can be heavily modified)
+        # Standard permission checks
         if not doc.has_permission("write"):
-            frappe.throw("You do not have permission to write to this document.", frappe.PermissionError)
+            frappe.throw(_("You do not have permission to write to this document."), frappe.PermissionError)
 
-        if doc.docstatus != 0:
-            # For submitted docs, you might only allow certain fields to be changed
-            # For this example, we only allow changes if it's a draft.
-            frappe.throw("Only draft documents can be edited in this manner.")
-            
-        # Update main document fields (excluding child tables)
-        main_fields = {k: v for k, v in update_data.items() if k not in ['joint_owners', 'remarks', 'receipts', 'additional_files']}
-        doc.update(main_fields)
+        # Allow edits only in Draft (docstatus=0) or if Rejected (workflow_state='Rejected')
+        if doc.docstatus != 0 and doc.workflow_state != 'Rejected':
+            frappe.throw(_("Only Draft or Rejected documents can be edited."))
 
-        # Handle joint_owners child table
+        # --- CORRECTED CHILD TABLE HANDLING ---
+        # Instead of clearing and appending, we simply set the table data.
+        # Frappe's ORM will intelligently handle updates, creations, and deletions.
+
+        # Pass the list of dictionaries directly from the frontend payload.
+        # This list includes the 'name' key for existing rows, which tells Frappe to update them.
+        
+        # Handle joint_owners
         if "joint_owners" in update_data:
-            doc.set("joint_owners", [])  # Clear existing child table entries
-            for owner_entry in update_data["joint_owners"]:
-                doc.append("joint_owners", owner_entry)
+            doc.set("joint_owners", update_data.get("joint_owners"))
 
-        # Handle remarks child table
+        # Handle remarks
         if "remarks" in update_data:
-            doc.set("remarks", [])  # Clear existing child table entries
-            for remark_entry in update_data["remarks"]:
-                doc.append("remarks", {
-                    "remark_title": remark_entry.get("remark_title"),
-                    "remark_description": remark_entry.get("remark_description"),
-                    "attachments": remark_entry.get("attachments"),
-                })
+            doc.set("remarks", update_data.get("remarks"))
 
-        # Handle receipts child table
+        # Handle receipts
         if "receipts" in update_data:
-            doc.set("receipts", [])  # Clear existing child table entries
-            for receipt_entry in update_data["receipts"]:
-                doc.append("receipts", {
-                    "receipt_date": receipt_entry.get("receipt_date"),
-                    "amount": receipt_entry.get("amount"),
-                    "receipt_file": receipt_entry.get("receipt_file"),
-                })
-
-        # If 'additional_files' child table data is present, update it
+            doc.set("receipts", update_data.get("receipts"))
+            
+        # Handle additional_files
         if "additional_files" in update_data:
-            doc.set("additional_files", []) # Clear existing child table entries
-            for file_entry in update_data["additional_files"]:
-                doc.append("additional_files", {
-                    "file_title": file_entry.get("file_title"),
-                    "file_upload": file_entry.get("file_upload"),
-                })
+            doc.set("additional_files", update_data.get("additional_files"))
+            
+        # --- END CORRECTED CHILD TABLE HANDLING ---
+
+
+        # Update main document fields (excluding keys we know are child tables)
+        # This prevents trying to set a list to a non-table field.
+        child_table_keys = ['joint_owners', 'remarks', 'receipts', 'additional_files']
+        main_fields = {k: v for k, v in update_data.items() if k not in child_table_keys}
+        doc.update(main_fields)
         
         # Save the document to the database
-        doc.save(ignore_permissions=True) # Permissions already checked
+        doc.save(ignore_permissions=True)
 
+        frappe.db.commit() # Ensure changes are committed to the database
+        
         return doc.as_dict()
 
+    except frappe.ValidationError as ve:
+        # Catch specific validation errors and return a clearer message
+        frappe.db.rollback()
+        frappe.throw(f"Validation Error: {ve}")
+
     except Exception as e:
+        frappe.db.rollback()
         frappe.log_error(frappe.get_traceback(), "Sales Registration Update Error")
         frappe.throw(f"An error occurred while saving: {e}")
+
+
+
+
+import frappe
+
+# Add this new function to your existing python file.
+@frappe.whitelist()
+def get_unit_price_for_lead(lead_name):
+    """
+    Finds the Sales Registration Form linked to a given Lead
+    and returns its unit_price.
+
+    :param lead_name: The name of the Lead document (e.g., LEAD-00001).
+    :return: The unit_price as a float, or 0 if not found.
+    """
+    if not lead_name:
+        return 0
+
+    # frappe.db.get_value is the most efficient way to get a single field value.
+    # It searches the "Sales Registration Form" doctype for a document
+    # where the 'lead' field matches the provided lead_name.
+    unit_price = frappe.db.get_value(
+        "Sales Registration Form", 
+        {"lead": lead_name}, 
+        "unit_price"
+    )
+
+    # Return the found price, or 0 if no matching document was found.
+    return unit_price or 0
 
 
 # Add this to the same file as your other whitelisted methods
@@ -1245,9 +1365,59 @@ def submit_for_approval(doc_name: str):
             doc.set("rejection_details", [])  # Clear the child table
             doc.rejected_fields_json = None         # Clear the JSON field
         # --- END NEW LOGIC ---
-
-        doc.status = "Awaiting Review"
+        lead_url = None
+        if doc.lead:
+            # lead_url = frappe.utils.get_url('Lead', doc.lead)
+            lead_url = f"{frappe.utils.get_url()}/app/lead/{doc.lead}"
+            # print('dddddddddddddddddddddd',lead_url)
+        doc.status = "Waiting for Approval"
         doc.save(ignore_permissions=True)
+
+        should_send_email = frappe.db.get_single_value("Admin Settings", "send_mail_on_sales_completion")
+        if should_send_email:
+            # Get all Admin and Super Admin users' emails
+            manager_roles = ["Admin", "Super Admin"]
+            recipients_list = frappe.db.sql("""
+                SELECT DISTINCT u.email
+                FROM `tabHas Role` AS hr
+                INNER JOIN `tabUser` AS u ON hr.parent = u.name
+                WHERE
+                    hr.role IN %(roles)s
+                    AND u.enabled = 1
+            """, {"roles": manager_roles}, as_list=1)
+            
+            admin_emails = [row[0] for row in recipients_list if row[0]]
+
+            if admin_emails:
+                subject = f"Sales Registration Form {doc_name} Submitted for Approval"
+                message = f"""
+                <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #ddd; border-radius: 8px; background-color: #f9f9f9;">
+                    <h2 style="color: #1976d2; text-align: center;">New Approval Request</h2>
+                    <p>Dear Admin,</p>
+                    <p>The Sales Registration Form <strong>{doc_name}</strong> has been submitted for approval.</p>
+                    <ul style="background-color: #fff; padding: 15px; border-radius: 5px; border-left: 4px solid #1976d2;">
+                        <li><strong>Document:</strong> {doc_name}</li>
+                        <li><strong>Status:</strong> Waiting for Approval</li>
+                    </ul>
+                    <p>Please review and take appropriate action.</p>
+                    <p><a href="{lead_url}" target="_blank" style="background-color: #007bff; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; display: inline-block;">View Lead</a></p>
+                    <p style="text-align: center; color: #666; font-size: 12px;">This is an automated notification from the system.</p>
+                </div>
+                """
+                # send_custom_email(to=admin_emails, subject=subject, message=message)
+                frappe.enqueue('joel_living.email.send_custom_email', to=admin_emails, subject=subject, message=message)
+                # Send system notifications to each admin
+                description = f"Sales Registration Form {doc_name} has been submitted for approval."
+                for admin_email in admin_emails:
+                    frappe.get_doc({
+                        "doctype": "Notification Log",
+                        "subject": f"Sales Registration Approval Request: {doc_name}",
+                        "type": "Alert",
+                        "document_type": "Sales Registration Form",
+                        "document_name": doc_name,
+                        "for_user": admin_email,
+                        "description": description
+                    }).insert(ignore_permissions=True)
 
         return {"status": "success", "message": "Document successfully sent for approval."}
 
@@ -1261,7 +1431,7 @@ def submit_for_approval(doc_name: str):
 #         frappe.throw(_("You do not have permissions to approve this."), frappe.PermissionError)
 
 #     doc = frappe.get_doc("Sales Registration Form", doc_name)
-#     if doc.status != "Awaiting Review":
+#     if doc.status != "Waiting for Approval":
 #         frappe.throw(f"Cannot approve a document with status '{doc.status}'.")
 
 #     doc.status = "Approved"
@@ -1282,7 +1452,7 @@ def reject_registration_with_details(doc_name: str, rejection_data: str):
         frappe.throw(_("You do not have permissions to reject this."), frappe.PermissionError)
 
     doc = frappe.get_doc("Sales Registration Form", doc_name)
-    if doc.status != "Awaiting Review":
+    if doc.status != "Waiting for Approval":
         frappe.throw(f"Cannot reject a document with status '{doc.status}'.")
 
     details = json.loads(rejection_data)
@@ -1327,12 +1497,12 @@ def get_sales_reg_name_and_status_field(lead_name):
 
 # @frappe.whitelist()
 # def submit_for_approval(doc_name):
-#     """Sets the document status to 'Awaiting Review'."""
+#     """Sets the document status to 'Waiting for Approval'."""
 #     try:
 #         doc = frappe.get_doc("Sales Registration Form", doc_name)
 #         doc.rejection_reason = None
 #         doc.rejected_fields = None
-#         doc.status = "Awaiting Review"
+#         doc.status = "Waiting for Approval"
 #         doc.save(ignore_permissions=True)
 #         doc.add_comment("Submitted for review.")
 #         return doc.status
@@ -1341,123 +1511,127 @@ def get_sales_reg_name_and_status_field(lead_name):
 
 
 # copyright and imports if any
-
 @frappe.whitelist()
-def approve_registration(doc_name, developer_commission_percentage, agent_commission_percentage, commission_status):
+def approve_registration(doc_name):
     """
-    Approves the Sales Registration Form, sets status to 'Approved',
-    records the developer and agent commission percentages and initial commission status,
-    clears rejection-related fields,
-    logs the approval action in remarks,
-    and updates the associated Lead's custom_lead_status to 'Closed'.
-    Also updates the Lead with commission details and calculated amounts.
-    
-    :param doc_name: The name of the Sales Registration Form document (str).
-    :param developer_commission_percentage: The developer commission percentage (float).
-    :param agent_commission_percentage: The agent commission percentage of developer commission (float).
-    :param commission_status: The initial commission status (str).
-    :returns: Success message.
-    """
-    
-    # --- 1. Permissions Check ---
-    allowed_roles = ["System Manager", "Administrator", "Admin"]
-    user_roles = frappe.get_roles(frappe.session.user) 
-    is_authorized = any(role in user_roles for role in allowed_roles)
+    Approve a Sales Registration Form without adding any remark entries.
+    - Sets the document status to "Approved"
+    - Records approved_on and approved_by
+    - Clears rejection metadata
+    - Updates the linked Lead (if any) to custom_lead_status = "Closed"
+    - Optionally enqueues an email notification (based on Admin Settings)
+    - Returns a success dict on completion
 
-    if not is_authorized:
+    :param doc_name: name of the Sales Registration Form to approve
+    :return: dict with status and message
+    """
+    import frappe
+
+    # --- 1. Permissions check ---
+    allowed_roles = ["System Manager", "Administrator", "Admin"]
+    user_roles = frappe.get_roles(frappe.session.user)
+    if not any(r in user_roles for r in allowed_roles):
         frappe.throw(frappe._("You are not permitted to approve Sales Registration Forms."))
-    
-    # --- 2. Fetch the document ---
+
+    # --- 2. Load document ---
     try:
         doc = frappe.get_doc("Sales Registration Form", doc_name)
-    except frappe.DoesNotExistError:
+    except Exception:
         frappe.throw(frappe._("Sales Registration Form {0} not found.").format(doc_name))
-        
-    # --- 3. Validate Status ---
-    if doc.status != "Awaiting Review":
-        frappe.throw(frappe._("Only 'Awaiting Review' documents can be approved."))
 
-    # --- 4. Validate Commission Percentages ---
-    try:
-        developer_commission_percentage = float(developer_commission_percentage)
-        agent_commission_percentage = float(agent_commission_percentage)
-    except (ValueError, TypeError):
-        frappe.throw(frappe._("Invalid commission percentage values. They must be valid numbers."))
-    
-    if developer_commission_percentage <= 0 or developer_commission_percentage > 100:
-        frappe.throw(frappe._("Developer commission percentage must be between 0 and 100 (exclusive)."))
-    
-    if agent_commission_percentage <= 0 or agent_commission_percentage > 100:
-        frappe.throw(frappe._("Agent commission percentage must be between 0 and 100 (exclusive)."))
-    
-    # --- 5. Validate Commission Status ---
-    allowed_status = [
-        'Invoice Awaiting Payment',
-        'Commission Partially Received From Developer',
-        'Commission Fully Received From Developer',
-        'Commission Paid Partially to Agent',
-        'Commission Paid Fully to Agent'
-    ]
-    if commission_status not in allowed_status:
-        frappe.throw(frappe._("Invalid commission status. Must be one of: {0}").format(', '.join(allowed_status)))
-    
-    # --- 6. Update Approval Details ---
+    # --- 3. Validate status ---
+    if doc.status != "Waiting for Approval":
+        frappe.throw(frappe._("Only 'Waiting for Approval' documents can be approved."))
+
+    # --- 4. Minimal approval update (no commissions, no remarks) ---
     doc.status = "Approved"
-    doc.developer_commission_percentage = developer_commission_percentage
-    doc.agent_commission_percentage = agent_commission_percentage
-    doc.commission_status = commission_status
     doc.approved_on = frappe.utils.now()
     doc.approved_by = frappe.session.user
-    
-    # Clear rejection-related fields
+
+    # Clear rejection-related metadata (keep historical counters if you want)
     doc.rejected_fields_json = ""
     doc.last_rejected_fields_json = ""
     doc.rejection_reason = ""
-    # rejection_count remains as historical data
-    
-    # --- 7. Log Approval in Remarks ---
-    current_datetime = frappe.utils.now()
-    ip_address = frappe.local.request_ip
-    user = frappe.session.user
-    log_description = (
-        f"Admin {user} approved the registration on {current_datetime} from IP {ip_address} "
-        f"with Developer Commission {developer_commission_percentage}%, "
-        f"Agent Commission {agent_commission_percentage}% (of Developer Commission), "
-        f"Initial Status: {commission_status}."
-    )
-    remark = doc.append("remarks", {})
-    remark.remark_title = "System Log: Approval"
-    remark.remark_description = log_description
-    
-    # --- 8. Save Sales Registration ---
-    doc.save(ignore_permissions=True)
-    
-    # --- 9. Update Associated Lead ---
-    if doc.lead:
-        try:
-            lead = frappe.get_doc("Lead", doc.lead)
-            lead.custom_lead_status = "Closed"
-            lead.custom_developer_commission_percentage = developer_commission_percentage
-            lead.custom_agent_commission_percentage = agent_commission_percentage
-            lead.custom_commission_status = commission_status
-            total_commission = doc.unit_price * (developer_commission_percentage / 100)
-            lead.custom_total_commission = total_commission
-            total_fines = lead.custom_total_fine_amount or 0
-            lead.custom_agent_commission = total_commission * (agent_commission_percentage / 100) - total_fines
-            lead.save(ignore_permissions=True)
-        except frappe.DoesNotExistError:
-            frappe.log_error(title="Lead Update Error", message=f"Lead {doc.lead} not found for Sales Registration {doc_name}")
-    
-    # --- 10. Commit ---
+
+    # --- 5. Save Sales Registration (ignore permissions because we already checked) ---
+    try:
+        doc.save(ignore_permissions=True)
+    except Exception as e:
+        # surface a friendly error
+        frappe.throw(frappe._("Failed to save Sales Registration on approval: {0}").format(str(e)))
+
+    # --- 6. Update linked Lead (best-effort) ---
+    lead_owner_email = None
+    lead_url = None
+    try:
+        if doc.get("lead"):
+            try:
+                lead = frappe.get_doc("Lead", doc.lead)
+                lead.custom_lead_status = "Closed"
+                # Do not modify commission fields here (per request)
+                lead.save(ignore_permissions=True)
+
+                # try to resolve owner email and lead url for notifications
+                lead_owner_email = frappe.db.get_value("User", lead.owner, "email")
+                lead_url = f"{frappe.utils.get_url()}/app/lead/{doc.lead}"
+            except Exception as lead_err:
+                frappe.log_error(title="Lead Update Error", message=f"Failed to update Lead {doc.lead} for Sales Registration {doc_name}: {str(lead_err)}")
+    except Exception:
+        # swallow, but log
+        frappe.log_error(title="Lead Update Outer Error", message=f"Unexpected error while updating lead for {doc_name}")
+
+    # --- 7. Commit DB changes ---
     frappe.db.commit()
 
-    # --- 11. Return Success Message ---
+    # --- 8. Optional notification email (best-effort; do not block approval) ---
+    try:
+        should_send_email = False
+        try:
+            should_send_email = frappe.db.get_single_value("Admin Settings", "send_mail_on_sales_completion")
+        except Exception:
+            # settings retrieval failed or setting missing; default to False
+            should_send_email = False
+
+        if should_send_email and lead_owner_email and lead_url:
+            subject = f"Sales Registration Form {doc_name} Approved"
+            message = f"""
+                <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #ddd; border-radius: 8px; background-color: #f9f9f9;">
+                    <h2 style="color: #4caf50; text-align: center;">Registration Approval Notice</h2>
+                    <p>The Sales Registration Form <strong>{doc_name}</strong> has been approved.</p>
+                    <p>Your Lead has been updated to 'Closed' status.</p>
+                    <p><a href="{lead_url}" target="_blank" style="background-color: #007bff; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; display: inline-block;">View Lead</a></p>
+                    <p style="text-align: center; color: #666; font-size: 12px;">This is an automated notification from the system.</p>
+                </div>
+            """
+            # enqueue sending email so the request is non-blocking
+            try:
+                frappe.enqueue('joel_living.email.send_custom_email', to=[lead_owner_email], subject=subject, message=message)
+            except Exception as e:
+                frappe.log_error(title="Email Enqueue Error", message=f"Failed to enqueue approval email for {doc_name}: {str(e)}")
+
+            # create a Notification Log entry (best-effort)
+            try:
+                frappe.get_doc({
+                    "doctype": "Notification Log",
+                    "subject": f"Sales Registration Approval: {doc_name}",
+                    "type": "Alert",
+                    "document_type": "Sales Registration Form",
+                    "document_name": doc_name,
+                    "for_user": lead_owner_email,
+                    "description": f"Sales Registration Form {doc_name} has been approved."
+                }).insert(ignore_permissions=True)
+            except Exception as e:
+                frappe.log_error(title="Notification Log Error", message=f"Failed to create notification log for {doc_name}: {str(e)}")
+    except Exception:
+        # keep approval successful even if notification process fails
+        frappe.log_error(title="Approval Notification Outer Error", message=f"Unexpected error while sending notifications for {doc_name}")
+
+    # --- 9. Return success payload ---
     return {
         "status": "success",
-        "message": frappe._("Sales Registration Form {0} has been approved with Developer Commission {1}%, Agent Commission {2}%, Status: {3}, and associated Lead updated to Closed.").format(
-            doc_name, developer_commission_percentage, agent_commission_percentage, commission_status
-        )
+        "message": frappe._("Sales Registration Form {0} has been approved and associated Lead (if any) updated to Closed.").format(doc_name)
     }
+
 
 # @frappe.whitelist()
 # def reject_registration(doc_name: str, rejection_reason: str):
@@ -1475,7 +1649,7 @@ def approve_registration(doc_name, developer_commission_percentage, agent_commis
 #     try:
 #         doc = frappe.get_doc("Sales Registration Form", doc_name)
 
-#         if doc.status != "Awaiting Review":
+#         if doc.status != "Waiting for Approval":
 #             frappe.throw(f"This document is in '{doc.status}' status and cannot be rejected.")
 
 #         doc.status = "Rejected"
@@ -1513,7 +1687,7 @@ def get_sales_registration_fines(lead_name):
             fields=["fine_date", "fine_description", "fine_amount", "name"],
             order_by="fine_date desc"
         )
-        print('ssssssssssssssssssssssssssssssssssssssssss',fines)
+        # print('ssssssssssssssssssssssssssssssssssssssssss',fines)
         # 3. Calculate total fine amount.
         total_fine_amount = sum(frappe.utils.flt(f.get('fine_amount')) for f in fines)
 
@@ -1762,128 +1936,165 @@ def set_version_ip_address(doc, method=None):
 
     ip_address = None
     # Use frappe.request.remote_addr which is more commonly available
-    if hasattr(frappe.request, 'remote_addr'):
-        ip_address = frappe.request.remote_addr
+    # if hasattr(frappe.request, 'remote_addr'):
+    #     ip_address = frappe.request.remote_addr
     
     # Fallback to a clear marker if the request object or IP is missing (e.g., if called via scheduler or CLI)
     doc.custom_ip_address = ip_address or 'Server-Side/CLI/Unknown' 
-
 @frappe.whitelist()
 def reject_sales_registration(doc_name, rejected_fields_json, rejection_reason, fine_amount, fine_description, fine_date):
     """
-    Rejects the Sales Registration Form, sets status to 'Rejected',
-    records the rejection details and fine,
-    logs the rejection action in remarks,
-    and immediately updates the associated Lead's custom_total_fine_amount with the new total.
-    
-    :param doc_name: The name of the Sales Registration Form document (str).
-    :param rejected_fields_json: JSON string of rejected fields (str).
-    :param rejection_reason: The reason for rejection (str).
-    :param fine_amount: The fine amount (float).
-    :param fine_description: The fine description (str).
-    :param fine_date: The fine date (str, optional).
-    :returns: Success message or error.
+    SAFELY reject the Sales Registration Form without deleting child tables.
+    - Updates status to Rejected
+    - Saves rejection details & fine
+    - Reloads doc before saving (prevents accidental child-table wiping)
+    - Updates lead total fine amount
+    - Sends email + notification if enabled
     """
-    
-    # --- 1. Permissions Check ---
-    allowed_roles = ["System Manager", "Administrator", "Admin"]
-    user_roles = frappe.get_roles(frappe.session.user) 
-    is_authorized = any(role in user_roles for role in allowed_roles)
 
-    if not is_authorized:
-        frappe.throw(frappe._("You are not permitted to reject Sales Registration Forms."))
-    
-    # --- 2. Fetch the document ---
+    import frappe
+
+    # --- 1. Permission check ---
+    allowed_roles = ["System Manager", "Administrator", "Admin"]
+    user_roles = frappe.get_roles(frappe.session.user)
+    if not any(r in user_roles for r in allowed_roles):
+        frappe.throw("You are not permitted to reject Sales Registration Forms.")
+
+    # --- 2. Load real DB version (no request payload contamination) ---
     try:
         doc = frappe.get_doc("Sales Registration Form", doc_name)
-    except frappe.DoesNotExistError:
-        frappe.throw(frappe._("Sales Registration Form {0} not found.").format(doc_name))
-        
-    # --- 3. Validate Status ---
-    if doc.status != "Awaiting Review":
-        frappe.throw(frappe._("Only 'Awaiting Review' documents can be rejected."))
+    except Exception:
+        frappe.throw(f"Sales Registration Form {doc_name} not found.")
 
-    # --- 4. Validate Inputs ---
+    # --- 3. Status validation ---
+    if doc.status != "Waiting for Approval":
+        frappe.throw("Only 'Waiting for Approval' documents can be rejected.")
+
+    # --- 4. Validate inputs ---
     if not rejection_reason:
-        frappe.throw(frappe._("Rejection reason is required."))
-    
+        frappe.throw("Rejection reason is required.")
+
     try:
         fine_amount = float(fine_amount)
-    except (ValueError, TypeError):
-        frappe.throw(frappe._("Invalid fine amount. It must be a valid number."))
-    
-    if fine_amount <= 0:
-        frappe.throw(frappe._("Fine amount must be greater than 0."))
-    
-    if not fine_description:
-        frappe.throw(frappe._("Fine description is required."))
-    
-    if not fine_date:
-        fine_date = frappe.utils.nowdate()
-    
+    except Exception:
+        frappe.throw("Invalid fine amount.")
+
     try:
         rejected_fields = frappe.utils.json.loads(rejected_fields_json)
-    except ValueError:
-        frappe.throw(frappe._("Invalid rejected fields JSON."))
-    
-    if not rejected_fields or (len(rejected_fields.get('main', [])) == 0 and len(rejected_fields.get('additional_files', {})) == 0 and len(rejected_fields.get('remarks_rows', [])) == 0 and len(rejected_fields.get('receipts_rows', [])) == 0):
-        frappe.throw(frappe._("At least one field must be selected for rejection."))
-    
-    # --- 5. Update Rejection Details ---
+    except Exception:
+        frappe.throw("Invalid rejected fields JSON.")
+
+    # must have at least one field selected
+    if not (
+        rejected_fields.get("main")
+        or rejected_fields.get("additional_files")
+        or rejected_fields.get("remarks_rows")
+        or rejected_fields.get("receipts_rows")
+    ):
+        frappe.throw("Select at least one field/row for rejection.")
+
+    # --- 5. Mark Rejected (LIGHT-TOUCH UPDATE) ---
     doc.status = "Rejected"
     doc.rejected_fields_json = rejected_fields_json
-    doc.last_rejected_fields_json = rejected_fields_json  # For audit
+    doc.last_rejected_fields_json = rejected_fields_json
     doc.rejection_reason = rejection_reason
     doc.rejection_count = (doc.rejection_count or 0) + 1
     doc.rejected_on = frappe.utils.now()
     doc.rejected_by = frappe.session.user
-    
-    # --- 6. Add Fine to Child Table ---
-    fine = doc.append("sales_registration_fines", {})
-    fine.fine_date = fine_date
-    fine.fine_description = fine_description
-    fine.fine_amount = fine_amount
-    
-    # --- 7. Log Rejection in Remarks ---
-    current_datetime = frappe.utils.now()
-    ip_address = frappe.local.request_ip
-    user = frappe.session.user
-    log_description = (
-        f"Admin {user} rejected the registration on {current_datetime} from IP {ip_address}. "
-        f"Reason: {rejection_reason}. "
-        f"Fine: AED {fine_amount:.2f}, Description: {fine_description}, Date: {fine_date}."
-    )
-    remark = doc.append("remarks", {})
-    remark.remark_title = "System Log: Rejection"
-    remark.remark_description = log_description
-    
-    # --- 8. Save Sales Registration ---
+
+    # --- 6. Append fine to child table (SAFE) ---
+    fine_row = doc.append("sales_registration_fines", {})
+    fine_row.fine_date = fine_date
+    fine_row.fine_description = fine_description
+    fine_row.fine_amount = fine_amount
+
+    # --- IMPORTANT: RELOAD BEFORE SAVING TO PROTECT ALL OTHER CHILD TABLES ---
+    # This prevents deletion of remarks, receipts, owners, additional_files, etc.
+    doc.reload()
+
+    # After reload, apply only rejection fields again
+    doc.status = "Rejected"
+    doc.rejected_fields_json = rejected_fields_json
+    doc.last_rejected_fields_json = rejected_fields_json
+    doc.rejection_reason = rejection_reason
+    doc.rejection_count = (doc.rejection_count or 0) + 1
+    doc.rejected_on = frappe.utils.now()
+    doc.rejected_by = frappe.session.user
+
+    # Re-append fine row after reload
+    fine_row = doc.append("sales_registration_fines", {})
+    fine_row.fine_date = fine_date
+    fine_row.fine_description = fine_description
+    fine_row.fine_amount = fine_amount
+
+    # --- 7. Save document (SAFE) ---
     doc.save(ignore_permissions=True)
-    
-    # --- 9. Calculate Total Fines and Update Lead ---
+
+    # --- 8. Update Lead fine summary ---
+    lead_owner_email = None
+    lead_url = None
+
     if doc.lead:
         try:
             lead = frappe.get_doc("Lead", doc.lead)
+
             total_fines = sum(f.fine_amount for f in doc.sales_registration_fines)
             lead.custom_total_fine_amount = total_fines
-            # Optionally update custom_fine_details HTML here if needed
+
+            # Update HTML summary
             html = '<table class="table table-sm"><thead><tr><th>Date</th><th>Description</th><th>Amount (AED)</th></tr></thead><tbody>'
-            for fine in doc.sales_registration_fines:
-                html += f'<tr><td>{fine.fine_date or ""}</td><td>{fine.fine_description or ""}</td><td>{fine.fine_amount or 0}</td></tr>'
-            html += '</tbody></table><p><strong>Total Fine: AED ' + f'{total_fines:.2f}' + '</strong></p>'
+            for f in doc.sales_registration_fines:
+                html += f'<tr><td>{f.fine_date or ""}</td><td>{f.fine_description or ""}</td><td>{f.fine_amount or 0}</td></tr>'
+            html += f'</tbody></table><p><strong>Total Fine: AED {total_fines:.2f}</strong></p>'
+
             lead.custom_fine_details = html
             lead.save(ignore_permissions=True)
-        except frappe.DoesNotExistError:
-            frappe.log_error(title="Lead Update Error", message=f"Lead {doc.lead} not found for Sales Registration {doc_name}")
-    
-    # --- 10. Commit ---
+
+            lead_owner_email = frappe.db.get_value("User", lead.owner, "email")
+            lead_url = f"{frappe.utils.get_url()}/app/lead/{doc.lead}"
+
+        except Exception as e:
+            frappe.log_error("Lead Update Error", f"{e}")
+
+    # --- 9. Commit ---
     frappe.db.commit()
 
-    # --- 11. Return Success Message ---
+    # --- 10. Optional Email + Notification ---
+    try:
+        send_mail = frappe.db.get_single_value("Admin Settings", "send_mail_on_sales_completion")
+    except Exception:
+        send_mail = False
+
+    if send_mail and lead_owner_email and lead_url:
+        subject = f"Sales Registration Form {doc_name} Rejected"
+        message = f"""
+        <div style="font-family: Arial, sans-serif; padding: 20px;">
+            <h2 style="color:#d32f2f;">Registration Rejected</h2>
+            <p>The Sales Registration Form <strong>{doc_name}</strong> has been rejected.</p>
+            <p><strong>Reason:</strong> {rejection_reason}</p>
+            <a href="{lead_url}" target="_blank">View Lead</a>
+        </div>
+        """
+
+        frappe.enqueue('joel_living.email.send_custom_email', to=[lead_owner_email], subject=subject, message=message)
+
+        # Notification Log
+        frappe.get_doc({
+            "doctype": "Notification Log",
+            "subject": f"Sales Registration Rejected: {doc_name}",
+            "type": "Alert",
+            "document_type": "Sales Registration Form",
+            "document_name": doc_name,
+            "for_user": lead_owner_email,
+            "description": f"Sales Registration {doc_name} has been rejected.\nReason: {rejection_reason}"
+        }).insert(ignore_permissions=True)
+
+    # --- 11. Result ---
     return {
         "status": "success",
-        "message": frappe._("Sales Registration Form {0} has been rejected. Fine added and Lead updated with total fine AED {1:.2f}.").format(doc_name, fine_amount)
+        "message": f"Sales Registration Form {doc_name} has been rejected. Total fine AED {fine_amount:.2f} added."
     }
+
 # @frappe.whitelist()
 # def reject_registration(doc_name, reason, rejected_fields):
 #     """Sets status to 'Rejected', increments count, and logs reasons."""

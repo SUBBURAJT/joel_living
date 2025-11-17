@@ -43,8 +43,7 @@ def create_notification(user, subject, message, ref_doctype, ref_name, send_emai
  
     frappe.db.commit()
  
- 
-# =========================================================
+ # =========================================================
 # SALES AGENT — REQUEST HIDE
 # =========================================================
 @frappe.whitelist()
@@ -75,6 +74,15 @@ def request_hide(leads):
 
         # Process each lead
         for lead in leads:
+
+            # 🚫 Backend restriction: Prevent hiding Completed / Closed leads
+            status = frappe.db.get_value("Lead", lead, "custom_lead_status")
+            if status in ["Sales Completed", "Closed"]:
+                return {
+                    "ok": False,
+                    "message": f"Cannot hide Lead {lead}. Status is {status}, hide not allowed."
+                }
+
             req_doc = frappe.get_doc({
                 "doctype": "Lead Hide Request",
                 "lead": lead,
@@ -85,16 +93,14 @@ def request_hide(leads):
             })
             req_doc.insert(ignore_permissions=True)
 
-            # ✅ Update Lead to make it completely hidden
             frappe.db.set_value("Lead", lead, {
                 "lead_owner": None,
                 "custom_hide_status": "Pending",
-                "custom_is_hidden": 1  # Mark lead as hidden (excluded from all lists)
+                "custom_is_hidden": 1
             })
 
             processed_leads.append(lead)
 
-            # Send in-app notification to all Admins
             for admin_user in admins:
                 frappe.enqueue(
                     create_notification,
@@ -111,7 +117,6 @@ def request_hide(leads):
 
         frappe.db.commit()
 
-        # ✅ Show all processed leads in a popup
         lead_list_str = ", ".join(processed_leads)
         frappe.msgprint(f"Hide request submitted successfully for: {lead_list_str}")
 
@@ -120,6 +125,90 @@ def request_hide(leads):
     except Exception as e:
         frappe.log_error(f"Hide request failed for {leads}: {str(e)}")
         return {"ok": False, "message": "Failed to submit hide request. Try again later."}
+
+# # =========================================================
+# # SALES AGENT — REQUEST HIDE
+# # =========================================================
+# @frappe.whitelist()
+# def request_hide(leads):
+#     """
+#     Sales Agent requests to hide one or more Leads.
+#     Sends ONLY system (in-app) notifications to all Admins.
+#     """
+#     current_user = frappe.session.user
+#     full_name = frappe.utils.get_fullname(current_user)
+
+#     try:
+#         # Ensure leads is a list
+#         if isinstance(leads, str):
+#             try:
+#                 leads = frappe.parse_json(leads)
+#                 if isinstance(leads, str):
+#                     leads = [leads]
+#             except Exception:
+#                 leads = [leads]
+
+#         processed_leads = []
+
+#         # Get all Admin users
+#         admins = {"Administrator"}
+#         role_holders = frappe.get_all("Has Role", filters={"role": "Admin"}, fields=["parent"])
+#         admins.update({r.parent for r in role_holders})
+
+#         # Process each lead
+#         for lead in leads:
+#             # 🚫 Backend protection: Block hide for Completed or Closed leads
+#             status = frappe.db.get_value("Lead", lead, "custom_lead_status")
+#             if status in ["Sales Completed", "Closed"]:
+#                 return {
+#                     "ok": False,
+#                     "message": f"Cannot hide Lead {lead}. Status is {status}, hide not allowed."
+#                 }
+#             req_doc = frappe.get_doc({
+#                 "doctype": "Lead Hide Request",
+#                 "lead": lead,
+#                 "requested_by": full_name,
+#                 "requested_by_user": current_user,
+#                 "requested_date": frappe.utils.now_datetime(),
+#                 "status": "Pending"
+#             })
+#             req_doc.insert(ignore_permissions=True)
+
+#             # ✅ Update Lead to make it completely hidden
+#             frappe.db.set_value("Lead", lead, {
+#                 "lead_owner": None,
+#                 "custom_hide_status": "Pending",
+#                 "custom_is_hidden": 1  # Mark lead as hidden (excluded from all lists)
+#             })
+
+#             processed_leads.append(lead)
+
+#             # Send in-app notification to all Admins
+#             for admin_user in admins:
+#                 frappe.enqueue(
+#                     create_notification,
+#                     queue="long",
+#                     timeout=600,
+#                     user=admin_user,
+#                     subject=f"Lead Hide Request from {full_name}",
+#                     message=f"{full_name} has requested to hide the Lead <b>{lead}</b>.<br><br>"
+#                             f"The request is awaiting your review and approval.",
+#                     ref_doctype="Lead Hide Request",
+#                     ref_name=req_doc.name,
+#                     send_email=False
+#                 )
+
+#         frappe.db.commit()
+
+#         # ✅ Show all processed leads in a popup
+#         lead_list_str = ", ".join(processed_leads)
+#         frappe.msgprint(f"Hide request submitted successfully for: {lead_list_str}")
+
+#         return {"ok": True, "message": f"Hide request submitted successfully for: {lead_list_str}"}
+
+#     except Exception as e:
+#         frappe.log_error(f"Hide request failed for {leads}: {str(e)}")
+#         return {"ok": False, "message": "Failed to submit hide request. Try again later."}
 
 
 # =========================================================
@@ -1010,7 +1099,7 @@ def increment_lead_call_count(lead):
     """Increment lead's call count when call is completed."""
     try:
         lead_doc = frappe.get_doc("Lead", lead)
-        lead_doc.call_count = (lead_doc.call_count or 0) + 1
+        lead_doc.custom_call_count = (lead_doc.custom_call_count or 0) + 1
         lead_doc.save(ignore_permissions=True)
         frappe.db.commit()
         return {"message": f"Lead {lead_doc.lead_name} call count updated"}

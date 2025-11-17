@@ -1946,13 +1946,16 @@ show_sales_completion_dialog() {
             }, 300);
             // Secondary load for dynamically created Joint Owner fields
             // Secondary load for dynamically created Joint Owner fields
+           // ... inside the load_draft function ...
+
+            // Secondary load for dynamically created Joint Owner fields
             setTimeout(() => {
                 for (let key in values) {
                     // This specifically targets the dynamic fields that start with 'jo'
                     if (key.startsWith('jo') && controls[key] && controls[key].set_value) {
                         const control = controls[key];
                         let value_to_set = String(values[key] || '');
-                        
+                        console.log("value_to_set", value_to_set);
                         // Local visual cleanup check
                         if (String(value_to_set).toLowerCase() === 'null') {
                             value_to_set = '';
@@ -1971,7 +1974,7 @@ show_sales_completion_dialog() {
                     }
                 }
                 if(controls.screened_before_payment) $(controls.screened_before_payment.input).trigger('change');
-            }, 400); // Wait 400ms for controls to fully render and the 'onchange' of extra_joint_owners to complete rendering the JO controls.
+            }, 800); // MODIFIED: Changed timeout from 400ms to 800ms for reliability.
             loaded = true;
         } else {
              // Logic for a new, clean dialog when no draft exists
@@ -2021,9 +2024,9 @@ const render_receipt_rows = () => {
         <table class="table table-bordered frappe-list-sidebar custom-receipt-table" style="margin-top:15px; background: white;">
             <thead>
                 <tr>
-                    <th style="width: 25%">Date *</th>
-                    <th style="width: 25%">Amount (AED) *</th>
-                    <th style="width: 35%">Proof of Payment *</th>
+                    <th style="width: 25%">Date</th>
+                    <th style="width: 25%">Amount (AED)</th>
+                    <th style="width: 35%">Proof of Payment</th>
                     <th style="width: 15%">Actions</th>
                 </tr>
             </thead>
@@ -2094,78 +2097,42 @@ const render_receipt_rows = () => {
         handle_input_change($input, index);
     });
    
-    // Logic for attach button
-    // Logic for attach button
-// Logic for attach button
+    // --- START: FINAL CORRECTED UPLOAD LOGIC ---
+// Logic for attach button using the modern FileUploader's correct method
 $placeholder.find('.add-file-btn').off('click').on('click', function() {
     const $btn = $(this);
     const index = parseInt($btn.data('index'));
-    const allowed_extensions = ['.pdf', '.jpg', '.jpeg', '.png'];
 
-    // 1. Create a hidden file input element on the fly.
-    const $file_input = $('<input type="file" class="hidden">');
-    
-    // 2. IMPORTANT: Set the 'accept' attribute to filter the file picker dialog.
-    $file_input.attr('accept', allowed_extensions.join(','));
-
-    // 3. Append it to the body so it's part of the DOM.
-    $('body').append($file_input);
-
-    // 4. Define what happens when the user selects a file.
-    $file_input.on('change', function(e) {
-        if (!this.files || this.files.length === 0) {
-            $file_input.remove(); // Cleanup if no file is chosen
-            return;
-        }
-
-        const file = this.files[0];
-        const file_name = file.name.toLowerCase();
-
-        // 5. Run our strict validation *before* uploading.
-        const is_valid = allowed_extensions.some(ext => file_name.endsWith(ext));
-
-        if (!is_valid) {
-            // If invalid, show a blocking error and stop everything.
-            frappe.msgprint({
-                title: __('Upload Blocked: Invalid File Type'),
-                indicator: 'red',
-                message: __('You can only upload PDF, JPG, or PNG files.')
-            });
-            $file_input.remove(); // Cleanup
-            return;
-        }
-
-        // 6. If the file is valid, use Frappe's uploader.
-        // This will show the "Uploading..." progress indicator.
-        frappe.upload.upload_file(file, {
-            callback: (attachment) => {
-                // The upload was successful. 'attachment' contains the file URL.
-                if (attachment && attachment.file_url) {
-                    // Update our data array with the new file URL
-                    receipts_data[index].receipt_proof = attachment.file_url;
-                    
-                    // Re-render the table to show the new file link
-                    render_receipt_rows();
-                }
-            },
-            onerror: () => {
-                // Handle any upload errors if necessary
-                frappe.msgprint(__('There was an error uploading your file. Please try again.'));
-            },
-            always: () => {
-                // 7. IMPORTANT: Always remove the hidden input after the process is complete.
-                $file_input.remove();
+    // 1. Instantiate the FileUploader with its configuration
+    const uploader = new frappe.ui.FileUploader({
+        // Define restrictions
+        restrictions: {
+            allowed_file_types: ['.pdf', '.jpg', '.jpeg', '.png'],
+        },
+        
+        // Define the callback for when the upload succeeds
+        on_success: (file_doc) => {
+            if (file_doc && file_doc.file_url) {
+                // Update our central data array with the new file URL
+                receipts_data[index].receipt_proof = file_doc.file_url;
+                
+                // Re-render the table to show the new file link
+                render_receipt_rows();
             }
-        });
+        },
+
+        // Optional: handle errors if the upload fails for some reason
+        on_error: () => {
+             frappe.msgprint(__('There was an error uploading your file. Please try again.'));
+        }
     });
 
-    // 8. Finally, programmatically click our hidden input to open the file picker for the user.
-    $file_input.trigger('click');
+    // 2. THIS IS THE CORRECT METHOD CALL
+    // It handles the entire "browse -> select -> upload" flow.
+    uploader.browse_and_upload();
 });
 };
-    // Function to set up the Data field to visually appear as a locked +971 phone number
-    // Function to set up the Data field to visually appear as a locked +971 phone number
-// Function to set up the Data field to visually appear as a locked +971 phone number
+    
 const setup_uae_phone_data_control = (control) => {
     const $input = $(control.input);
     const prefix = '+971';
@@ -2728,15 +2695,15 @@ const unit_number_control = make_control({ fieldname: 'unit_number', label: 'Uni
     make_control({ fieldname: 'booking_form_signed', label: 'Booking Form Signed', fieldtype: 'Select', options: ['\nYes', '\nNo'], reqd: 1 }, 'unit-col-3');
     const booking_form_upload_control = make_control({ fieldname: 'booking_form_upload', label: 'Booking Form Upload', fieldtype: 'Attach' }, 'unit-col-3');
 attach_validation_onchange(booking_form_upload_control, validate_attachment);
+    make_control({ fieldname: 'spa_signed', label: 'SPA Signed', fieldtype: 'Select', options: ['\nYes', '\nNo']}, 'unit-col-3');
 
 const spa_upload_control = make_control({ fieldname: 'spa_upload', label: 'SPA Upload', fieldtype: 'Attach' }, 'unit-col-3');
 attach_validation_onchange(spa_upload_control, validate_attachment);
 
 const soa_upload_control = make_control({ fieldname: 'soa_upload', label: 'SOA Upload', fieldtype: 'Attach' }, 'unit-col-3');
 attach_validation_onchange(soa_upload_control, validate_attachment);
-    make_control({ fieldname: 'spa_signed', label: 'SPA Signed', fieldtype: 'Select', options: ['\nYes', '\nNo']}, 'unit-col-3');
-    make_control({ fieldname: 'spa_upload', label: 'SPA Upload', fieldtype: 'Attach' }, 'unit-col-3');
-    make_control({ fieldname: 'soa_upload', label: 'SOA Upload', fieldtype: 'Attach' }, 'unit-col-3');
+    // make_control({ fieldname: 'spa_upload', label: 'SPA Upload', fieldtype: 'Attach' }, 'unit-col-3');
+    // make_control({ fieldname: 'soa_upload', label: 'SOA Upload', fieldtype: 'Attach' }, 'unit-col-3');
    
     // Receipts Section Title (use HTML instead of unsupported Section Break)
     make_control({

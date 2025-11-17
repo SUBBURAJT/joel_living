@@ -1,0 +1,107 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "autoname": "format:ACL-{MM}-{####}",
+ "creation": "2025-11-14 12:42:45.458556",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "lead",
+  "called_by",
+  "call_start_time",
+  "duration_sec",
+  "column_break_pmge",
+  "phone_number",
+  "lead_name",
+  "call_end_time",
+  "call_status",
+  "agent"
+ ],
+ "fields": [
+  {
+   "fieldname": "lead",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Lead",
+   "options": "Lead"
+  },
+  {
+   "fieldname": "called_by",
+   "fieldtype": "Data",
+   "label": "Called By"
+  },
+  {
+   "fieldname": "call_start_time",
+   "fieldtype": "Datetime",
+   "label": "Call Time"
+  },
+  {
+   "fieldname": "duration_sec",
+   "fieldtype": "Int",
+   "in_list_view": 1,
+   "label": "Duration (sec)"
+  },
+  {
+   "fieldname": "column_break_pmge",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "phone_number",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Phone Number"
+  },
+  {
+   "fieldname": "lead_name",
+   "fieldtype": "Data",
+   "in_standard_filter": 1,
+   "label": "Called To"
+  },
+  {
+   "fieldname": "call_end_time",
+   "fieldtype": "Datetime",
+   "hidden": 1,
+   "label": "Call End Time"
+  },
+  {
+   "fieldname": "call_status",
+   "fieldtype": "Select",
+   "label": "Call Status",
+   "options": "\nInitiated\nCall Declined\nCall Busy\nCall Not Answered\nCall Completed"
+  },
+  {
+   "fieldname": "agent",
+   "fieldtype": "Link",
+   "label": "Agent",
+   "options": "User"
+  }
+ ],
+ "grid_page_length": 50,
+ "hide_toolbar": 1,
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2025-11-14 12:42:45.458556",
+ "modified_by": "Administrator",
+ "module": "Joel Living",
+ "name": "Agent Call Log",
+ "naming_rule": "Expression",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

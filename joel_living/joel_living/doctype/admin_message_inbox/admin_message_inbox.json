@@ -29,7 +29,7 @@
    "fieldname": "send_date",
    "fieldtype": "Date",
    "in_list_view": 1,
-   "label": "Send Date",
+   "label": "Sent Date",
    "read_only": 1
   },
   {
@@ -64,8 +64,8 @@
  "hide_toolbar": 1,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-10-29 10:19:47.381409",
- "modified_by": "ajay@skadits.com",
+ "modified": "2025-11-17 16:29:29.901346",
+ "modified_by": "Administrator",
  "module": "Joel Living",
  "name": "Admin Message Inbox",
  "naming_rule": "Set by user",

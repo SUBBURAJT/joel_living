@@ -1,31 +1,31 @@
-document.body.addEventListener("click", function (e) {
-	handleToggle(e);
-});
+// document.body.addEventListener("click", function (e) {
+// 	handleToggle(e);
+// });
 
-document.body.addEventListener("touchstart", function (e) {
-	handleToggle(e);
-});
+// document.body.addEventListener("touchstart", function (e) {
+// 	handleToggle(e);
+// });
 
-function handleToggle(e) {
-	if (e.target.closest(".sidebar-toggle-btn")) {
-		const side = document.querySelector(
-			".workspace-sidebar, .desk-sidebar, .layout-side-section"
-		);
-		const main = document.querySelector(".layout-main-section");
+// function handleToggle(e) {
+// 	if (e.target.closest(".sidebar-toggle-btn")) {
+// 		const side = document.querySelector(
+// 			".workspace-sidebar, .desk-sidebar, .layout-side-section"
+// 		);
+// 		const main = document.querySelector(".layout-main-section");
 
-		if (!side || !main) return;
+// 		if (!side || !main) return;
 
-		if (getComputedStyle(side).display === "none") {
-			side.style.display = "";
-			main.style.width = "";
-			console.log("Sidebar shown ✔️");
-		} else {
-			side.style.display = "none";
-			main.style.width = "100%";
-			console.log("Sidebar hidden ✔️");
-		}
-	}
-}
+// 		if (getComputedStyle(side).display === "none") {
+// 			side.style.display = "";
+// 			main.style.width = "";
+// 			console.log("Sidebar shown ✔️");
+// 		} else {
+// 			side.style.display = "none";
+// 			main.style.width = "100%";
+// 			console.log("Sidebar hidden ✔️");
+// 		}
+// 	}
+// }
 
 // $(document).ready(function () {
 //     if (frappe.user.has_role("Sales Agent")) {

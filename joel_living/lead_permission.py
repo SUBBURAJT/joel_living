@@ -238,7 +238,8 @@ def process_lead_timeout_unassignment(lead_name, owner):
     try:
         doc = frappe.get_doc("Lead", lead_name)
         # Final check to ensure the state hasn't changed since dispatch
-        if doc.lead_owner == owner and doc.custom_lead_status == "Open":
+        # if doc.lead_owner == owner and doc.custom_lead_status == "Open":
+        if doc.lead_owner == owner and doc.custom_call_count == 0:
             doc.lead_owner = None
             doc.custom_assigned_at = None
             
@@ -492,7 +493,7 @@ def unassign_expired_open_leads():
                 WHERE action IN ('Self-assigned', 'Assigned', 'Reassigned')
             ) AS H ON L.name = H.lead
             WHERE
-                L.custom_lead_status = 'Open'
+                L.custom_call_count = 0
                 AND L.lead_owner IS NOT NULL
                 AND L.custom_assigned_at <= %(cutoff_time)s
                 AND H.rn = 1

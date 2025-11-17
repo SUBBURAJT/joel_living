@@ -951,10 +951,10 @@ def create_sales_registration(lead_name, data):
         
         # B. Handle Additional Files (Optional Section)
         # Assumes a child table with fieldname 'additional_files' and fields 'title' and 'attachment'
-        if form_data.get('additional_file_upload'):
+        if form_data.get('file_title'):
              doc.append('additional_files', {
-                 'file_title': form_data.get('additional_file_title'),
-                 'file_upload': form_data.get('additional_file_upload')
+                 'file_title': form_data.get('file_title'),
+                 'file_upload': form_data.get('file_upload')
              })
 
         # C. Handle Joint Owners
@@ -1413,8 +1413,8 @@ def submit_for_approval(doc_name: str):
                         "doctype": "Notification Log",
                         "subject": f"Sales Registration Approval Request: {doc_name}",
                         "type": "Alert",
-                        "document_type": "Sales Registration Form",
-                        "document_name": doc_name,
+                        "document_type": "Lead",
+                        "document_name": doc.lead,
                         "for_user": admin_email,
                         "description": description
                     }).insert(ignore_permissions=True)
@@ -2066,13 +2066,32 @@ def reject_sales_registration(doc_name, rejected_fields_json, rejection_reason, 
         send_mail = False
 
     if send_mail and lead_owner_email and lead_url:
-        subject = f"Sales Registration Form {doc_name} Rejected"
+        subject = f"Action Required: Sales Registration {doc_name} Rejected"
         message = f"""
-        <div style="font-family: Arial, sans-serif; padding: 20px;">
-            <h2 style="color:#d32f2f;">Registration Rejected</h2>
-            <p>The Sales Registration Form <strong>{doc_name}</strong> has been rejected.</p>
-            <p><strong>Reason:</strong> {rejection_reason}</p>
-            <a href="{lead_url}" target="_blank">View Lead</a>
+        <div style="font-family: Arial, Helvetica, sans-serif; font-size: 16px; line-height: 1.6; color: #333333; max-width: 600px; margin: 20px auto; border: 1px solid #dddddd; border-radius: 8px; overflow: hidden;">
+            
+            <div style="background-color: #d32f2f; color: #ffffff; padding: 20px;">
+                <h2 style="margin: 0; font-size: 24px;">Registration Rejected</h2>
+            </div>
+            
+            <div style="padding: 25px;">
+                <p>The Sales Registration Form for lead <strong>{doc_name}</strong> requires your attention.</p>
+                
+                <p style="font-size: 15px; background-color: #fef2f2; border-left: 4px solid #d32f2f; padding: 15px; margin: 25px 0;">
+                    <strong style="display: block; margin-bottom: 5px;">Reason for Rejection:</strong>
+                    {rejection_reason}
+                </p>
+                
+                <p>Please click the button below to view the lead, make the necessary corrections, and resubmit.</p>
+                
+                <a href="{lead_url}" target="_blank" style="background-color: #c62828; color: #ffffff; padding: 12px 25px; text-align: center; text-decoration: none; border-radius: 5px; display: inline-block; font-weight: bold; margin-top: 10px;">
+                    View and Correct Lead
+                </a>
+            </div>
+            
+            <div style="background-color: #f7f7f7; color: #777777; padding: 15px; text-align: center; font-size: 12px;">
+                <p style="margin: 0;">This is an automated notification. Please do not reply.</p>
+            </div>
         </div>
         """
 
@@ -2083,8 +2102,8 @@ def reject_sales_registration(doc_name, rejected_fields_json, rejection_reason, 
             "doctype": "Notification Log",
             "subject": f"Sales Registration Rejected: {doc_name}",
             "type": "Alert",
-            "document_type": "Sales Registration Form",
-            "document_name": doc_name,
+            "document_type": "Lead",
+            "document_name": doc.lead,
             "for_user": lead_owner_email,
             "description": f"Sales Registration {doc_name} has been rejected.\nReason: {rejection_reason}"
         }).insert(ignore_permissions=True)
@@ -2148,8 +2167,8 @@ def update_and_log_registration(docname, changes, user):
         frappe.get_doc({
             "doctype": "Comment",
             "comment_type": "Info",
-            "reference_doctype": "Sales Registration Form",
-            "reference_name": docname,
+            "reference_doctype": "Lead",
+            "reference_name": doc.lead,
             "content": f"Updated by {user}: {', '.join(updated_fields)}"
         }).insert(ignore_permissions=True)
 

@@ -297,7 +297,7 @@
    "fieldname": "developer_sales_rep",
    "fieldtype": "Link",
    "label": "Developer Sales Representative",
-   "options": "User"
+   "options": "Developer"
   },
   {
    "fieldname": "pricing_docs_section",
@@ -499,7 +499,7 @@
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-11-15 19:52:01.946113",
+ "modified": "2025-11-17 21:02:22.399784",
  "modified_by": "Administrator",
  "module": "Joel Living",
  "name": "Sales Registration Form",

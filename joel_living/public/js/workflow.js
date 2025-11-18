@@ -52,7 +52,7 @@ class WorkflowOverride extends frappe.ui.form.States {
                                                     frappe.msgprint({
                                                         title: __('Form Already Exists'),
                                                         indicator: 'info',
-                                                        message: __("A Sales Completion Form {0} already exists for this lead and is pending approval.", [`<a href="/app/sales-registration-form/${r.message}" target="_blank">${r.message}</a>`])
+                                                        message: __("A Sales Registration Form already exists for this lead and is pending approval.", [`<a href="/app/sales-registration-form/${r.message}" target="_blank">${r.message}</a>`])
                                                     });
                                                 } else {
                                                     // No form exists, so proceed with showing the dialog.
@@ -2129,7 +2129,7 @@ $placeholder.find('.add-file-btn').off('click').on('click', function() {
 
     // 2. THIS IS THE CORRECT METHOD CALL
     // It handles the entire "browse -> select -> upload" flow.
-    uploader.browse_and_upload();
+    // uploader.browse_and_upload();
 });
 };
     
@@ -2641,7 +2641,13 @@ attach_validation_onchange(passport_copy_control, validate_attachment);
    
     // Unit Details fields...
     make_control({ fieldname: 'unit_sale_type', label: 'Unit Category', fieldtype: 'Select', reqd: 1, options: ['Off-Plan', 'Secondary'] }, 'unit-col-1');
-    make_control({ fieldname: 'developer', label: 'Developer', fieldtype: 'Link', options: 'Developer', reqd: 1 }, 'unit-col-1');
+    const developer_control = make_control({ 
+        fieldname: 'developer', 
+        label: 'Developer', 
+        fieldtype: 'Link', 
+        options: 'Developer', 
+        reqd: 1 
+    }, 'unit-col-1');
     const project_control = make_control({
         fieldname: 'project',
         label: 'Project',
@@ -2683,13 +2689,44 @@ attach_validation_onchange(passport_copy_control, validate_attachment);
     make_control({ fieldname: 'unit_view', label: 'Unit View', fieldtype: 'Data', reqd: 1 }, 'unit-col-1');
    
     // Unit Col 2
-    make_control({ fieldname: 'developer_sales_rep', label: 'Developer Sales Representative', fieldtype: 'Link', options: 'Developer' }, 'unit-col-2');
+    const dev_sales_rep_control = make_control({ 
+        fieldname: 'developer_sales_rep', 
+        label: 'Developer Sales Representative', 
+        fieldtype: 'Link', 
+        // IMPORTANT: Ensure this is the correct name of the Child DocType in your system.
+        options: 'Multiselect Sales Representative' 
+    }, 'unit-col-2');
+
+    // --- START: DYNAMIC FILTERING LOGIC ---
+    dev_sales_rep_control.df.get_query = () => {
+        const developer_name = developer_control.get_value();
+
+        // If no developer is selected, return a filter that will find nothing.
+        // This prevents showing sales reps from all developers.
+        if (!developer_name) {
+            return {
+                filters: {
+                    'name': 'name1' // A filter that will never be met
+                }
+            };
+        }
+
+        // If a developer IS selected, return the query with the filter.
+        return {
+            filters: {
+                // This filters the child table ('Developer Sales Representative')
+                // by its 'parent' document, which is the Developer.
+                'parent': developer_name
+            }
+        };
+    };
+
+   
 const unit_number_control = make_control({ fieldname: 'unit_number', label: 'Unit Number', fieldtype: 'Data', reqd: 1 }, 'unit-col-2');
     attach_validation_onchange(unit_number_control, validate_unit_number); 
         make_control({ fieldname: 'unit_type', label: 'Unit Type (e.g., 1BR, Studio)', fieldtype: 'Data', reqd: 1 }, 'unit-col-2');
     make_control({ fieldname: 'unit_price', label: 'Unit Price (AED)', fieldtype: 'Currency', reqd: 1 }, 'unit-col-2');
-    make_control({ fieldname: 'unit_area', label: 'Unit Area (SQFT)', fieldtype: 'Float', reqd: 1 }, 'unit-col-2');
-    // Unit Col 3
+make_control({ fieldname: 'unit_area', label: 'Unit Area (SQFT)', fieldtype: 'Float', reqd: 1, precision: '2' }, 'unit-col-2');    // Unit Col 3
       
     make_control({ fieldname: 'booking_eoi_paid_amount', label: 'Booking/EOI Paid Amount (AED)', fieldtype: 'Currency', reqd: 1 }, 'unit-col-3');
     make_control({ fieldname: 'booking_form_signed', label: 'Booking Form Signed', fieldtype: 'Select', options: ['\nYes', '\nNo'], reqd: 1 }, 'unit-col-3');
@@ -3203,51 +3240,115 @@ function attachLiveValidation(control) {
             }, 500); // Increased timeout to 500ms to allow collapse/tab animation to finish
             return;
         }
-        const confirm_dialog = new frappe.ui.Dialog({
-            title: __('Confirm Submission'),
-            fields: [
-                {
-                    fieldtype: 'HTML',
-                    options: `<h4>${__('Are you sure you want to create the Sales Registration?')}</h4>`
+        // const confirm_dialog = new frappe.ui.Dialog({
+        //     title: __('Confirm Submission'),
+        //     fields: [
+        //         {
+        //             fieldtype: 'HTML',
+        //             options: `<h4>${__('Are you sure you want to create the Sales Registration?')}</h4>`
+        //         }
+        //     ],
+        //     primary_action_label: __('Confirm & Submit'),
+        //     primary_action: () => {
+        //         confirm_dialog.hide();
+               
+        //         const primary_btn = dialog.get_primary_btn();
+        //         primary_btn.prop('disabled', true);
+               
+        //         console.log('Submitting values:', values);
+        //         frappe.call({
+        //             method: "joel_living.custom_lead.create_sales_registration",
+        //             args: {
+        //                 lead_name: me.frm.doc.name,
+        //                 data: values,
+        //             },
+        //             callback: (r) => {
+        //                 if (r.message) {
+        //                     dialog.hide();
+        //                     // clear_draft(); // NEW: Clear draft on success
+        //                     me.frm.reload_doc().then(() => {
+        //                         // Update custom_lead_status to "Sales Completed"
+        //                         me.frm.set_value('custom_lead_status', 'Sales Completed');
+        //                         me.frm.save().then(() => {
+        //                             // Optionally re-apply/reload to reflect changes
+        //                             me.frm.reload_doc();
+        //                         }).catch((err) => {
+        //                             console.error('Failed to save custom_lead_status:', err);
+        //                             frappe.msgprint(__('Failed to update Lead status. Please try again.'));
+        //                         });
+        //                     });
+        //                 }
+        //             },
+        //             always: () => {
+        //                 primary_btn.prop('disabled', false);
+        //             },
+        //         });
+        //     }
+        // });
+
+
+         const handle_submission = (action_type) => {
+        confirm_dialog.hide();
+
+        const primary_btn = dialog.get_primary_btn();
+        primary_btn.prop('disabled', true);
+
+        frappe.call({
+            method: "joel_living.custom_lead.create_sales_registration",
+            args: {
+                lead_name: me.frm.doc.name,
+                data: values,
+                action: action_type // Pass the chosen action ('save_draft' or 'submit_for_approval')
+            },
+            callback: (r) => {
+                if (r.message) {
+                    dialog.hide();
+                    clear_draft(); // Clear draft on success
+                    me.frm.reload_doc().then(() => {
+                        me.frm.set_value('custom_lead_status', 'Sales Completed');
+                        me.frm.save().then(() => {
+                            me.frm.reload_doc();
+                        }).catch((err) => {
+                            console.error('Failed to save custom_lead_status:', err);
+                            frappe.msgprint(__('Failed to update Lead status. Please try again.'));
+                        });
+                    });
                 }
-            ],
-            primary_action_label: __('Confirm & Submit'),
-            primary_action: () => {
-                confirm_dialog.hide();
-               
-                const primary_btn = dialog.get_primary_btn();
-                primary_btn.prop('disabled', true);
-               
-                console.log('Submitting values:', values);
-                frappe.call({
-                    method: "joel_living.custom_lead.create_sales_registration",
-                    args: {
-                        lead_name: me.frm.doc.name,
-                        data: values,
-                    },
-                    callback: (r) => {
-                        if (r.message) {
-                            dialog.hide();
-                            // clear_draft(); // NEW: Clear draft on success
-                            me.frm.reload_doc().then(() => {
-                                // Update custom_lead_status to "Sales Completed"
-                                me.frm.set_value('custom_lead_status', 'Sales Completed');
-                                me.frm.save().then(() => {
-                                    // Optionally re-apply/reload to reflect changes
-                                    me.frm.reload_doc();
-                                }).catch((err) => {
-                                    console.error('Failed to save custom_lead_status:', err);
-                                    frappe.msgprint(__('Failed to update Lead status. Please try again.'));
-                                });
-                            });
-                        }
-                    },
-                    always: () => {
-                        primary_btn.prop('disabled', false);
-                    },
-                });
-            }
+            },
+            always: () => {
+                primary_btn.prop('disabled', false);
+            },
         });
+    };
+
+
+    const confirm_dialog = new frappe.ui.Dialog({
+        title: __('Confirm Submission'),
+        fields: [{
+            fieldtype: 'HTML',
+            options: `
+                <div style="padding-bottom: 10px;">
+                    <h4>${__('What would you like to do?')}</h4>
+                </div>
+                <div style="margin-top: 20px; text-align: right; width: 100%;">
+                    <button id="save-draft-btn" class="btn btn-sm btn-default" style="margin-right: 10px;">
+                        ${__('Save as Draft')}
+                    </button>
+                    <button id="submit-approval-btn" class="btn btn-sm btn-primary">
+                        ${__('Confirm & Send for Approval')}
+                    </button>
+                </div>
+            `
+        }],
+        actions: [] // Disable standard footer buttons
+    });
+confirm_dialog.$wrapper.on('click', '#save-draft-btn', () => {
+        handle_submission('save_draft');
+    });
+
+    confirm_dialog.$wrapper.on('click', '#submit-approval-btn', () => {
+        handle_submission('submit_for_approval');
+    });
        
         confirm_dialog.show();
     });

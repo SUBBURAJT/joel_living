@@ -36,6 +36,7 @@
   "yearly_estimated_income",
   "joint_owners_section",
   "joint_owners",
+  "rejection_reason_table",
   "unit_sale_info_tab",
   "unit_info_section",
   "unit_sale_type",
@@ -295,9 +296,8 @@
   },
   {
    "fieldname": "developer_sales_rep",
-   "fieldtype": "Link",
-   "label": "Developer Sales Representative",
-   "options": "Developer"
+   "fieldtype": "Data",
+   "label": "Developer Sales Representative"
   },
   {
    "fieldname": "pricing_docs_section",
@@ -494,12 +494,18 @@
    "fieldname": "last_rejected_fields_json",
    "fieldtype": "Small Text",
    "label": "Last Rejected Fields Json"
+  },
+  {
+   "fieldname": "rejection_reason_table",
+   "fieldtype": "Table",
+   "label": "Rejection Reason Table",
+   "options": "Rejection Reason"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-11-17 21:02:22.399784",
+ "modified": "2025-11-18 23:22:21.363253",
  "modified_by": "Administrator",
  "module": "Joel Living",
  "name": "Sales Registration Form",

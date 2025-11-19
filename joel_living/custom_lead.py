@@ -2179,3 +2179,7 @@ def get_project_floor_details(project_name):
         }
 
     return details
+
+
+
+

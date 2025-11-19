@@ -855,6 +855,7 @@ import json # Used to handle data from the client script
 
 @frappe.whitelist()
 def create_sales_registration(lead_name, data, action='save_draft'):
+    print("action", action)
     """
     Creates a new 'Sales Registration Form' document from the data
     submitted by the custom dialog in the Lead form.
@@ -994,8 +995,10 @@ def create_sales_registration(lead_name, data, action='save_draft'):
                     'receipt_file': receipt_row.get('receipt_proof')
                 })
         # --- III. SAVE THE DOCUMENT ---
+        lead_id_name = frappe.get_doc("Lead", doc.lead)
         if action == 'submit_for_approval':
             doc.status = 'Waiting for Approval'
+            lead_id_name.custom_lead_status = "Sales Completed"
 
         if action == 'save_draft':
             doc.status = 'Draft'

@@ -32,7 +32,7 @@ app_include_js = [
     "/assets/joel_living/js/toggle.js",
     "/assets/joel_living/js/workflow.js"
 ]
-app_include_css = "/assets/joel_living/css/style.css"
+# app_include_css = "/assets/joel_living/css/style.css"
 
 
 # include js, css files in header of web template

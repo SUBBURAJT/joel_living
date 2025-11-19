@@ -52,7 +52,8 @@ class WorkflowOverride extends frappe.ui.form.States {
                                                     frappe.msgprint({
                                                         title: __('Form Already Exists'),
                                                         indicator: 'info',
-                                                        message: __("A Sales Registration Form already exists for this lead and is pending approval.", [`<a href="/app/sales-registration-form/${r.message}" target="_blank">${r.message}</a>`])
+                                                        // message: __("A Sales Registration Form already exists for this lead and is pending approval.", [`<a href="/app/sales-registration-form/${r.message}" target="_blank">${r.message}</a>`])
+                                                        message: __("A Sales Registration Form already exists for this lead and is pending approval.")
                                                     });
                                                 } else {
                                                     // No form exists, so proceed with showing the dialog.
@@ -2494,10 +2495,10 @@ const apply_strict_file_validation = (control) => {
                     <!-- MASTER ROW with 4 columns: Field 1 (Always Visible), Field 2/3 (Mutually Exclusive), Field 4 (Visible on No), Field 5 (Visible on No) -->
                     <div class="row">
                         <!-- 1. Main Select (Always visible - col-md-3) -->
-                        <div class="col-md-3" id="screen-q-col"></div> 
+                        <div class="col-md-5" id="screen-q-col"></div> 
                         
                         <!-- 2 & 3. MUTUALLY EXCLUSIVE COLUMN (col-md-3) -->
-                        <div class="col-md-3">
+                        <div class="col-md-4">
                             <div id="screen-yes-attach-wrap"></div> <!-- Inner div for Screenshot of green light -->
                             <div id="screen-no-date-wrap"></div>  <!-- Inner div for Date/time of screening -->
                         </div>
@@ -2506,7 +2507,7 @@ const apply_strict_file_validation = (control) => {
                         <div class="col-md-3" id="screen-no-result-col"></div> 
 
                         <!-- 5. NO Conditional Attach Field (col-md-3) -->
-                        <div class="col-md-3" id="screen-no-attach-col"></div> 
+                        <div class="col-md-4" id="screen-no-attach-col"></div> 
                         
                     </div>
                     
@@ -2794,7 +2795,7 @@ attach_validation_onchange(screenshot_attach, validate_attachment); // <- TARGET
     }, 'screen-no-result-col'); 
 
     // 5. Screenshot Final Attach (3 units - NO CONDITION)
-    const final_screenshot_attach = make_control({ fieldname: 'final_screening_screenshot', label: 'Screenshot of final screening result...', fieldtype: 'Attach', reqd: 1 }, 'screen-no-attach-col');
+    const final_screenshot_attach = make_control({ fieldname: 'final_screening_screenshot', label: 'Screenshot of final screening result', fieldtype: 'Attach', reqd: 1 }, 'screen-no-attach-col');
 attach_validation_onchange(final_screenshot_attach, validate_attachment);
     
     // 6. Reason for Late Screening (Full width - NO CONDITION)
@@ -2833,7 +2834,7 @@ attach_validation_onchange(final_screenshot_attach, validate_attachment);
         if (reason_for_late_screening) reason_for_late_screening.df.reqd = show_no ? 1 : 0;
         
     }).trigger('change');
-// ... (rest of the file is complete and correct)
+
     // Remarks & Files fields...
     make_control({ fieldname: 'remark_title', label: 'Title', fieldtype: 'Data' }, 'remarks-col-1');
 const remark_files_control = make_control({ fieldname: 'remark_files', label: 'Attachments', fieldtype: 'Attach' }, 'remarks-col-2');
@@ -3287,39 +3288,185 @@ function attachLiveValidation(control) {
         // });
 
 
-         const handle_submission = (action_type) => {
-        confirm_dialog.hide();
+    //      const handle_submission = (action_type) => {
+    //     confirm_dialog.hide();
 
-        const primary_btn = dialog.get_primary_btn();
-        primary_btn.prop('disabled', true);
+    //     const primary_btn = dialog.get_primary_btn();
+    //     primary_btn.prop('disabled', true);
 
-        frappe.call({
-            method: "joel_living.custom_lead.create_sales_registration",
-            args: {
-                lead_name: me.frm.doc.name,
-                data: values,
-                action: action_type // Pass the chosen action ('save_draft' or 'submit_for_approval')
-            },
-            callback: (r) => {
-                if (r.message) {
-                    dialog.hide();
-                    clear_draft(); // Clear draft on success
-                    me.frm.reload_doc().then(() => {
-                        me.frm.set_value('custom_lead_status', 'Sales Completed');
-                        me.frm.save().then(() => {
-                            me.frm.reload_doc();
-                        }).catch((err) => {
-                            console.error('Failed to save custom_lead_status:', err);
-                            frappe.msgprint(__('Failed to update Lead status. Please try again.'));
-                        });
-                    });
+    //     frappe.call({
+    //         method: "joel_living.custom_lead.create_sales_registration",
+    //         args: {
+    //             lead_name: me.frm.doc.name,
+    //             data: values,
+    //             action: action_type // Pass the chosen action ('save_draft' or 'submit_for_approval')
+    //         },
+    //         callback: (r) => {
+    //             if (r.message) {
+    //                 dialog.hide();
+    //                 clear_draft(); // Clear draft on success
+    //                 me.frm.reload_doc().then(() => {
+    //                     me.frm.set_value('custom_lead_status', 'Sales Completed');
+    //                     me.frm.save().then(() => {
+    //                         me.frm.reload_doc();
+    //                     }).catch((err) => {
+    //                         console.error('Failed to save custom_lead_status:', err);
+    //                         frappe.msgprint(__('Failed to update Lead status. Please try again.'));
+    //                     });
+    //                 });
+    //             }
+    //         },
+    //         always: () => {
+    //             primary_btn.prop('disabled', false);
+    //         },
+    //     });
+    // };
+    
+const handle_submission = (action_type) => {
+    // 1. UI LOCKING
+    confirm_dialog.hide();
+    const primary_btn = dialog.get_primary_btn();
+    primary_btn.prop('disabled', true);
+    frappe.show_alert({ message: __('Processing...'), indicator: 'blue' });
+
+    frappe.call({
+        method: "joel_living.custom_lead.create_sales_registration",
+        args: {
+            lead_name: me.frm.doc.name,
+            data: values, // Send the data (cleaned or not)
+            action: action_type
+        },
+        callback: (r) => {
+            if (r.message) {
+                dialog.hide();
+                clear_draft();
+                frappe.msgprint({ title: 'Success', message: 'Registration Created', indicator: 'green' });
+                me.frm.reload_doc().then(() => me.frm.save());
+            }
+        },
+        error: (r) => {
+            // 2. STOP SYSTEM MESSAGES & CLEAN UI
+            frappe.hide_msgprint(true);
+            if (cur_dialog && cur_dialog.title && cur_dialog.title.includes("Error")) cur_dialog.hide();
+            primary_btn.prop('disabled', false);
+
+            wrapper.find('.form-group').removeClass('has-error');
+            wrapper.find('.control-input').css('border-color', '');
+            wrapper.find('.local-error-message').remove();
+
+            // 3. GET RAW ERROR STRING
+            let raw_error = "";
+            try {
+                raw_error = (r.message || "") + " ";
+                if (r._server_messages) raw_error += JSON.parse(r._server_messages).join(" ");
+            } catch (e) {}
+            const error_clean = raw_error.replace(/[^0-9+]/g, ""); // Remove everything except numbers and + for comparison
+
+            // 4. DETECT PHONE ISSUES
+            if (raw_error.toLowerCase().includes("phone") || raw_error.toLowerCase().includes("valid")) {
+                
+                let target = null;
+
+                // --- STRATEGY A: MATCH BY VALUE (Most Accurate) ---
+                // Loop through ALL controls to see which field contains the specific digits mentioned in the error
+                const phoneKeys = Object.keys(controls).filter(k => controls[k].df.fieldtype === 'Phone' || k.includes('phone'));
+                
+                for (let key of phoneKeys) {
+                    const control = controls[key];
+                    const val = control.get_value();
+
+                    if (val && val.length > 5) {
+                        // Create a "digits only" version of the field value
+                        const val_clean = String(val).replace(/[^0-9+]/g, "");
+                        
+                        // Check if the server error specifically mentions THIS phone number
+                        // We use "includes" so that if error has prefix/suffix, we still find it
+                        if (error_clean.includes(val_clean) && val_clean.length > 6) {
+                            target = control;
+                            break; // Stop looking! We found the exact field.
+                        }
+                    }
                 }
-            },
-            always: () => {
-                primary_btn.prop('disabled', false);
-            },
-        });
-    };
+
+                // --- STRATEGY B: MATCH BY LONGEST NAME (Fallback) ---
+                // If matching by value didn't work (maybe server error is generic), find matched field name.
+                if (!target) {
+                    // Sort keys longest to shortest to catch "jo0_main_phone..." before "main_phone..."
+                    phoneKeys.sort((a, b) => b.length - a.length);
+                    for (let key of phoneKeys) {
+                        if (raw_error.toLowerCase().includes(key.toLowerCase())) {
+                            target = controls[key];
+                            break;
+                        }
+                    }
+                }
+
+                // 5. EXTRACT CODE & MESSAGE
+                let dynamic_code = "+971";
+                if (target) {
+                    const val = target.get_value() || "";
+                    const parts = val.split('-');
+                    if (parts.length > 0 && parts[0].includes('+')) dynamic_code = parts[0].trim();
+                }
+
+                frappe.msgprint({
+                    title: __('Invalid Phone Number'),
+                    indicator: 'red',
+                    message: `The number entered is not valid for country code <b>${dynamic_code}</b>.<br>Please check digits and try again.`
+                });
+
+                // 6. FOCUS & EXPAND LOGIC (Handles Joint Owner Accordion)
+                if (target) {
+                    const $wrapper = $(target.wrapper);
+
+                    setTimeout(() => {
+                        // A. Switch Tab
+                        const tabId = $wrapper.closest('.tab-pane').attr('id');
+                        if (tabId) {
+                            const $tabBtn = wrapper.find(`.nav-link[data-target="#${tabId}"]`);
+                            if (!$tabBtn.hasClass('active')) $tabBtn.click();
+                        }
+
+                        // B. Expand Hidden Accordion (The Fix for Joint Owners)
+                        const $panel = $wrapper.closest('.panel-collapse');
+                        if ($panel.length) {
+                             // Bootstrap command to open the collapse section containing this field
+                             $panel.collapse('show');
+                        }
+
+                        // C. Scroll, Highlight, Focus
+                        setTimeout(() => {
+                            $wrapper[0].scrollIntoView({ behavior: 'smooth', block: 'center' });
+                            
+                            $wrapper.closest('.form-group').addClass('has-error');
+                            $wrapper.find('input').css({
+                                'border': '2px solid #d9534f',
+                                'background-color': '#fff5f5' // faint red background for emphasis
+                            });
+
+                            $wrapper.find('.control-input-wrapper').append(
+                                `<div class="local-error-message" style="color:#d9534f; font-size:11px; margin-top:4px; font-weight:bold;">
+                                    <i class="fa fa-hand-o-up"></i> Correct this number
+                                </div>`
+                            );
+                            
+                            if (target.input) target.input.focus();
+                            
+                        }, 350); // Delay allows accordion animation to finish
+
+                    }, 100); // Delay ensures tab switch happened
+                }
+            } else {
+                // GENERIC ERROR
+                frappe.msgprint({
+                    title: __('Error'),
+                    indicator: 'red',
+                    message: raw_error || 'An unexpected error occurred.'
+                });
+            }
+        }
+    });
+};
 
 
     const confirm_dialog = new frappe.ui.Dialog({

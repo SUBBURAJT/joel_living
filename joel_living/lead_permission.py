@@ -809,3 +809,54 @@ def get_assignment_timeout_minutes():
     
     # Return the value, or a safe default of 60 if it's not set.
     return int(timeout or 60)
+
+
+
+
+
+import frappe
+
+@frappe.whitelist(allow_guest=True)
+def search_sales_reps(doctype, txt, searchfield, start, page_len, filters):
+    """
+    Bypasses standard permissions to fetch Sales Reps from the Child Table.
+    """
+    # 1. Parse parameters
+    filters = frappe.parse_json(filters) or {}
+    parent = filters.get("parent")
+    
+    # Sanitization
+    txt = f"%{txt}%" if txt else "%"
+    start = int(start) if start else 0
+    page_len = int(page_len) if page_len else 20
+
+    # 2. Build Query Conditions dynamically
+    # If parent is provided, strict filter. If not, we optionally allow all or return nothing.
+    # Assuming you want ALL reps if no parent is selected (remove check if you want opposite)
+    condition = ""
+    if parent:
+        condition += " AND parent = %(parent)s"
+    
+    # Search in the specific field holding the name (sales_representative) or the ID (name)
+    condition += " AND (sales_representative LIKE %(txt)s OR name LIKE %(txt)s)"
+
+    # 3. Run Raw SQL (Standard frappe return is Tuple, which works faster here)
+    # We select 'name' (the ID needed for the link) and 'sales_representative' (the readable label)
+    results = frappe.db.sql(f"""
+        SELECT 
+            name, 
+            sales_representative 
+        FROM 
+            `tabMultiselect Sales Representative`
+        WHERE 
+            1=1 {condition}
+        LIMIT %(page_len)s OFFSET %(start)s
+    """, {
+        "parent": parent,
+        "txt": txt,
+        "page_len": page_len,
+        "start": start
+    })
+
+    # 4. Return in Link Format: (Value, Description)
+    return results

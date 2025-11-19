@@ -2699,28 +2699,14 @@ attach_validation_onchange(passport_copy_control, validate_attachment);
     }, 'unit-col-2');
 
     // --- START: DYNAMIC FILTERING LOGIC ---
-    dev_sales_rep_control.df.get_query = () => {
-        const developer_name = developer_control.get_value();
+    dev_sales_rep_control.df.get_query = function() {
+    const developer_name = developer_control.get_value() || "";
 
-        // If no developer is selected, return a filter that will find nothing.
-        // This prevents showing sales reps from all developers.
-        if (!developer_name) {
-            return {
-                filters: {
-                    'name': 'name1' // A filter that will never be met
-                }
-            };
-        }
-
-        // If a developer IS selected, return the query with the filter.
-        return {
-            filters: {
-                // This filters the child table ('Developer Sales Representative')
-                // by its 'parent' document, which is the Developer.
-                'parent': developer_name
-            }
-        };
+    return {
+        query: 'joel_living.lead_permission.search_sales_reps',
+        filters: { parent: developer_name }
     };
+};
 
    
 const unit_number_control = make_control({ fieldname: 'unit_number', label: 'Unit Number', fieldtype: 'Data', reqd: 1 }, 'unit-col-2');

@@ -836,13 +836,13 @@ def send_email_safe(user_email, subject, message, ref_doctype=None, ref_name=Non
 
 # import frappe
 
-# @frappe.whitelist()
-# def check_for_existing_sales_form(lead_name):
-#     """
-#     Checks if a 'Sales Completion Form' for a given Lead already exists.
-#     Returns the name of the form if it exists, otherwise returns None.
-#     """
-#     return frappe.db.exists("Sales Registration Form", {"lead": lead_name})
+@frappe.whitelist()
+def check_for_existing_sales_form(lead_name):
+    """
+    Checks if a 'Sales Completion Form' for a given Lead already exists.
+    Returns the name of the form if it exists, otherwise returns None.
+    """
+    return frappe.db.exists("Sales Registration Form", {"lead": lead_name})
 
 
 

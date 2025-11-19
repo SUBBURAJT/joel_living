@@ -29,10 +29,10 @@ app_license = "mit"
 # app_include_js = "/assets/joel_living/js/joel_living.js"
 
 app_include_js = [
-    "/assets/joel_living/js/toggle.js",
-    "/assets/joel_living/js/workflow.js"
+    "/assets/joel_living/js/toggle.js?v=1",
+    "/assets/joel_living/js/workflow.js?v=1"
 ]
-# app_include_css = "/assets/joel_living/css/style.css"
+# app_include_css = "/assets/joel_living/css/style.css?v=1"
 
 
 # include js, css files in header of web template

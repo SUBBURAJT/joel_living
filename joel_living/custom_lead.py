@@ -995,16 +995,19 @@ def create_sales_registration(lead_name, data, action='save_draft'):
                     'receipt_file': receipt_row.get('receipt_proof')
                 })
         # --- III. SAVE THE DOCUMENT ---
-        lead_id_name = frappe.get_doc("Lead", doc.lead)
+        
         if action == 'submit_for_approval':
             doc.status = 'Waiting for Approval'
-            lead_id_name.custom_lead_status = "Sales Completed"
+            
 
         if action == 'save_draft':
             doc.status = 'Draft'
         # Insert the document into the database
         doc.insert(ignore_permissions=True)
         if action == 'submit_for_approval':
+            lead_id_name = frappe.get_doc("Lead", doc.lead)
+            lead_id_name.custom_lead_status = "Sales Completed"
+            lead_id_name.save(ignore_permissions=True)
             lead_url = f"{frappe.utils.get_url()}/app/lead/{doc.lead}"
             should_send_email = frappe.db.get_single_value("Admin Settings", "send_mail_on_sales_completion")
             if should_send_email:

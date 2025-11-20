@@ -76,6 +76,55 @@
 //         });
 
 // });
+
+// global formatter for Attachment fields: show only the filename
+// custom_common.js
+// custom_common.js
+// (function() {
+//     function filenameFromUrl(url) {
+//         if (!url) return "";
+//         // strip query/hash, take last segment
+//         let fname = url.split("?")[0].split("#")[0].split("/").pop() || url;
+//         return fname;
+//     }
+
+//     function updateAttachmentLinks(root=document) {
+//         // Select anchor(s) that show the full file path
+//         root.querySelectorAll && root.querySelectorAll('.attached-file-link').forEach(a => {
+//             // only change if currently showing the href (full path) or still has a slash
+//             let text = a.textContent && a.textContent.trim();
+//             if (!text) return;
+//             // Avoid overwriting custom labels: only replace if it looks like a path
+//             if (text.includes('/') || text.startsWith('/private/files') || text.includes('files/')) {
+//                 a.textContent = filenameFromUrl(a.getAttribute('href') || text);
+//             }
+//         });
+//     }
+
+//     // Run once after frappe is ready
+//     frappe && frappe.ready ? frappe.ready(() => updateAttachmentLinks()) : updateAttachmentLinks();
+
+//     // Observe DOM changes and update dynamically inserted attachments
+//     const observer = new MutationObserver(mutations => {
+//         for (const m of mutations) {
+//             if (m.addedNodes && m.addedNodes.length) {
+//                 m.addedNodes.forEach(node => {
+//                     // if node itself contains attachments or children do
+//                     if (node.querySelectorAll) {
+//                         updateAttachmentLinks(node);
+//                     }
+//                 });
+//             }
+//         }
+//     });
+
+//     // observe the entire document body
+//     if (document && document.body) {
+//         observer.observe(document.body, { childList: true, subtree: true });
+//     }
+// })();
+
+
 $(document).ready(function () {
 
     // ======================================================

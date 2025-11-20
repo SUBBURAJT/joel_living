@@ -1956,7 +1956,7 @@ show_sales_completion_dialog() {
                     if (key.startsWith('jo') && controls[key] && controls[key].set_value) {
                         const control = controls[key];
                         let value_to_set = String(values[key] || '');
-                        console.log("value_to_set", value_to_set);
+                        // console.log("value_to_set", value_to_set);
                         // Local visual cleanup check
                         if (String(value_to_set).toLowerCase() === 'null') {
                             value_to_set = '';
@@ -2545,6 +2545,128 @@ const apply_strict_file_validation = (control) => {
         if (!parent_element.length) return;
         const control = frappe.ui.form.make_control({ df, parent: parent_element, render_input: true });
         controls[df.fieldname] = control;
+        if (['Currency', 'Float', 'Int'].includes(df.fieldtype)) {
+            setTimeout(() => {
+                const $input = $(control.input);
+                const MAX_DIGITS = 15;         // Max 15 characters
+                const MAX_VALUE = 100000000000; // Max 100 Billion
+
+                // A. Block "e", "+", "-" (Prevents scientific notation input)
+                $input.on('keydown', function(e) {
+                    if (['e', 'E', '+'].includes(e.key)) {
+                        e.preventDefault();
+                    }
+                });
+
+                // B. Validate on Input (Restrict length)
+                $input.on('input', function() {
+                    let val = $(this).val().toString();
+                    // Remove 'e' or '+' if they somehow got pasted in
+                    if (val.includes('e') || val.includes('+')) {
+                        val = val.replace(/[eE\+]/g, '');
+                        $(this).val(val);
+                    }
+                    // Cut off if too long
+                    if (val.length > MAX_DIGITS) {
+                         $(this).val(val.slice(0, MAX_DIGITS));
+                    }
+                });
+
+                // C. Validate on Change (Check Value)
+                $input.on('change blur', function() {
+                    let val = parseFloat(control.get_value()) || 0;
+                    if (val > MAX_VALUE) {
+                        frappe.show_alert({ message: 'Reached maximum limit', indicator: 'orange' });
+                        control.set_value(0); // Reset to 0 or set to MAX_VALUE
+                    }
+                });
+            }, 100);
+        }
+        if (['Date', 'Datetime'].includes(df.fieldtype)) {
+            setTimeout(() => {
+                // Check if Frappe has initialized the datepicker object
+                if (control.datepicker && control.datepicker.opts) {
+                    const $input = $(control.input);
+                    
+                    // When clicked or focused, check screen position
+                    $input.on('click focus', function() {
+                        const rect = this.getBoundingClientRect();
+                        const window_height = window.innerHeight;
+                        const space_below = window_height - rect.bottom;
+                        
+                        // If less than 320px space below, force calendar to show on TOP
+                        // standard calendar height is around ~280px-300px
+                        if (space_below < 320) {
+                            control.datepicker.opts.position = 'top left';
+                        } else {
+                            control.datepicker.opts.position = 'bottom left';
+                        }
+                    });
+                }
+            }, 500); // Slight delay to ensure Datepicker is fully loaded
+        }
+
+
+        if (df.fieldtype === 'Link') {
+            setTimeout(() => {
+                // Locate the label inside this specific control
+                const $label = $(control.wrapper).find('.control-label');
+                
+                // Only add if not already added (safety check)
+                if ($label.find('.link-icon-hint').length === 0) {
+                    $label.append(`
+                        <span class="link-icon-hint" style="margin-left: 6px; color: #8d99a6; font-size: 12px; cursor: pointer;">
+                            <i class="fa fa-chevron-circle-down" title="Select from options"></i>
+                        </span>
+                    `);
+                    
+                    // Bonus: Make clicking the icon focus the field (opens the dropdown)
+                    $label.find('.link-icon-hint').on('click', () => {
+                        if (control.input) $(control.input).focus();
+                    });
+                }
+            }, 100); // Slight delay ensures HTML is rendered
+        }
+        if (df.fieldtype === 'Attach') {
+            const clean_attach_display = () => {
+                setTimeout(() => {
+                    const $wrapper = $(control.wrapper);
+
+                    // A. HIDE 'Reload File' BUTTON ---------------------
+                    // We search for 'a' tags or buttons that contain the exact text "Reload File"
+                    $wrapper.find('a, button, span').filter(function() {
+                        return $(this).text().trim() === "Reload File";
+                    }).hide();
+                    // --------------------------------------------------
+
+                    // B. CLEAN FILENAME (Your existing logic) ----------
+                    const $link = $wrapper.find('.attached-file-link, a[target="_blank"]');
+                    $link.each(function() {
+                        const $this = $(this);
+                        const url = $this.attr('href'); 
+                        const current_text = $this.text();
+                        
+                        if (url) {
+                            let filename = decodeURIComponent(url.split('/').pop().split('?')[0]);
+                            if (current_text !== filename) {
+                                $this.text(filename);
+                            }
+                        }
+                    });
+                }, 200); 
+            };
+
+            // Trigger cleanup on Load, Change, and Upload events
+            const original_set_value = control.set_value.bind(control);
+            control.set_value = function(value) {
+                original_set_value(value);
+                clean_attach_display();
+            };
+            $(control.wrapper).on('click change', '.attach-btn, .remove-btn', clean_attach_display);
+            
+            // Initial Run
+            clean_attach_display();
+        }
         return control;
     };
    
@@ -3147,7 +3269,9 @@ function attachLiveValidation(control) {
 
                 if (should_check_required && is_empty) {
                     failed_validation = true;
-                    validation_message = "This field is required.";
+                    // Get the label (e.g. "Passport Number") from the control definition
+                    const field_label = control.df.label || "This field"; 
+                    validation_message = `${field_label} is required.`;
                 }
             }
 
@@ -3313,13 +3437,13 @@ const handle_submission = (action_type) => {
     confirm_dialog.hide();
     const primary_btn = dialog.get_primary_btn();
     primary_btn.prop('disabled', true);
-    frappe.show_alert({ message: __('Processing...'), indicator: 'blue' });
+    // frappe.show_alert({ message: __('Processing...'), indicator: 'blue' });
 
     frappe.call({
         method: "joel_living.custom_lead.create_sales_registration",
         args: {
             lead_name: me.frm.doc.name,
-            data: values, // Send the data (cleaned or not)
+            data: values,
             action: action_type
         },
         callback: (r) => {
@@ -3339,115 +3463,122 @@ const handle_submission = (action_type) => {
             wrapper.find('.form-group').removeClass('has-error');
             wrapper.find('.control-input').css('border-color', '');
             wrapper.find('.local-error-message').remove();
+            wrapper.find('.field-error').remove();
 
-            // 3. GET RAW ERROR STRING
+            // 3. GET RAW ERROR STRING & CLEAN IT
             let raw_error = "";
             try {
                 raw_error = (r.message || "") + " ";
                 if (r._server_messages) raw_error += JSON.parse(r._server_messages).join(" ");
             } catch (e) {}
-            const error_clean = raw_error.replace(/[^0-9+]/g, ""); // Remove everything except numbers and + for comparison
+            
+            // Extract the specific bad value reported by python (e.g. "+91-865")
+            // Regex looks for: "Phone Number [CAPTURE_THIS] set in field"
+            const match_val = raw_error.match(/Phone Number\s+([0-9+\-\(\)\s]+?)\s+set in field/i);
+            // Create a comparison string of just digits and +, e.g., "+91865"
+            const error_val_clean = match_val ? match_val[1].replace(/[^0-9+]/g, "") : "";
 
-            // 4. DETECT PHONE ISSUES
-            if (raw_error.toLowerCase().includes("phone") || raw_error.toLowerCase().includes("valid")) {
-                
-                let target = null;
+            // 4. IDENTIFY THE SPECIFIC UI CONTROL
+            let target = null;
 
-                // --- STRATEGY A: MATCH BY VALUE (Most Accurate) ---
-                // Loop through ALL controls to see which field contains the specific digits mentioned in the error
-                const phoneKeys = Object.keys(controls).filter(k => controls[k].df.fieldtype === 'Phone' || k.includes('phone'));
-                
+            // Strategy: Value-Based Matching (The Priority)
+            // We iterate ALL controls. The field that contains the exact numbers mentioned 
+            // in the error is the culprit, regardless of its fieldname.
+            const phoneKeys = Object.keys(controls).filter(k => 
+                controls[k] && (controls[k].df.fieldtype === 'Phone' || k.includes('phone'))
+            );
+
+            if (error_val_clean && error_val_clean.length > 2) {
                 for (let key of phoneKeys) {
                     const control = controls[key];
-                    const val = control.get_value();
-
-                    if (val && val.length > 5) {
-                        // Create a "digits only" version of the field value
-                        const val_clean = String(val).replace(/[^0-9+]/g, "");
+                    const val = control.get_value(); // e.g. "+91-865"
+                    
+                    if (val) {
+                        const val_clean = String(val).replace(/[^0-9+]/g, ""); // +91865
                         
-                        // Check if the server error specifically mentions THIS phone number
-                        // We use "includes" so that if error has prefix/suffix, we still find it
-                        if (error_clean.includes(val_clean) && val_clean.length > 6) {
+                        // Precise Match:
+                        // 1. If the UI input equals the Error value (+91865 === +91865)
+                        // 2. Or if the UI input *contains* the Error value (handling occasional parsing diffs)
+                        if (val_clean === error_val_clean || (val_clean.includes(error_val_clean) && val_clean.length === error_val_clean.length)) {
                             target = control;
-                            break; // Stop looking! We found the exact field.
+                            break; // FOUND IT! Stop searching.
                         }
                     }
                 }
+            }
 
-                // --- STRATEGY B: MATCH BY LONGEST NAME (Fallback) ---
-                // If matching by value didn't work (maybe server error is generic), find matched field name.
-                if (!target) {
-                    // Sort keys longest to shortest to catch "jo0_main_phone..." before "main_phone..."
-                    phoneKeys.sort((a, b) => b.length - a.length);
-                    for (let key of phoneKeys) {
-                        if (raw_error.toLowerCase().includes(key.toLowerCase())) {
-                            target = controls[key];
-                            break;
-                        }
-                    }
-                }
-
-                // 5. EXTRACT CODE & MESSAGE
-                let dynamic_code = "+971";
-                if (target) {
-                    const val = target.get_value() || "";
-                    const parts = val.split('-');
-                    if (parts.length > 0 && parts[0].includes('+')) dynamic_code = parts[0].trim();
-                }
+            // 5. HANDLING & NAVIGATION
+            if (target) {
+                // Define Dynamic Country Code for Message
+                let dynamic_code = "+971"; 
+                const parts = String(target.get_value()).split('-');
+                if (parts.length > 0 && parts[0].includes('+')) dynamic_code = parts[0].trim();
 
                 frappe.msgprint({
                     title: __('Invalid Phone Number'),
                     indicator: 'red',
-                    message: `The number entered is not valid for country code <b>${dynamic_code}</b>.<br>Please check digits and try again.`
+                    message: `The number <b>${target.get_value()}</b> is not valid for country code <b>${dynamic_code}</b>.<br>Please correct the highlighted field.`
                 });
 
-                // 6. FOCUS & EXPAND LOGIC (Handles Joint Owner Accordion)
-                if (target) {
-                    const $wrapper = $(target.wrapper);
+                const $wrapper = $(target.wrapper);
 
-                    setTimeout(() => {
-                        // A. Switch Tab
-                        const tabId = $wrapper.closest('.tab-pane').attr('id');
-                        if (tabId) {
-                            const $tabBtn = wrapper.find(`.nav-link[data-target="#${tabId}"]`);
-                            if (!$tabBtn.hasClass('active')) $tabBtn.click();
-                        }
-
-                        // B. Expand Hidden Accordion (The Fix for Joint Owners)
-                        const $panel = $wrapper.closest('.panel-collapse');
-                        if ($panel.length) {
-                             // Bootstrap command to open the collapse section containing this field
-                             $panel.collapse('show');
-                        }
-
-                        // C. Scroll, Highlight, Focus
-                        setTimeout(() => {
-                            $wrapper[0].scrollIntoView({ behavior: 'smooth', block: 'center' });
-                            
-                            $wrapper.closest('.form-group').addClass('has-error');
-                            $wrapper.find('input').css({
-                                'border': '2px solid #d9534f',
-                                'background-color': '#fff5f5' // faint red background for emphasis
-                            });
-
-                            $wrapper.find('.control-input-wrapper').append(
-                                `<div class="local-error-message" style="color:#d9534f; font-size:11px; margin-top:4px; font-weight:bold;">
-                                    <i class="fa fa-hand-o-up"></i> Correct this number
-                                </div>`
-                            );
-                            
-                            if (target.input) target.input.focus();
-                            
-                        }, 350); // Delay allows accordion animation to finish
-
-                    }, 100); // Delay ensures tab switch happened
+                // STEP A: Switch Tabs
+                // Find which tab-pane this control resides in
+                const tabPane = $wrapper.closest('.tab-pane');
+                if (tabPane.length) {
+                    const tabId = tabPane.attr('id'); // e.g. "tab-joint-owners"
+                    const $tabBtn = wrapper.find(`.nav-link[data-target="#${tabId}"]`);
+                    if ($tabBtn.length && !$tabBtn.hasClass('active')) {
+                        $tabBtn.trigger('click');
+                    }
                 }
+
+                // STEP B: Expand Accordion (For Joint Owners)
+                // Find if control is inside a collapsible panel
+                const $panelCollapse = $wrapper.closest('.panel-collapse');
+                if ($panelCollapse.length && !$panelCollapse.hasClass('show')) {
+                    $panelCollapse.collapse('show');
+                }
+
+                // STEP C: Scroll & Highlight (Delay for animations)
+                setTimeout(() => {
+                    // Scroll logic
+                    if (target.input) {
+                        target.input.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        target.input.focus();
+                    } else {
+                        $wrapper[0].scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    }
+
+                    // Apply Red Styles
+                    $wrapper.closest('.form-group').addClass('has-error'); // Bootstrap error state
+                    
+                    const $inputEl = $wrapper.find('input, select, .input-with-feedback');
+                    $inputEl.css({
+                        'border': '2px solid #d9534f', 
+                        'background-color': '#fff5f5'
+                    });
+
+                    // Append Error Text Locally
+                    $wrapper.find('.control-input-wrapper').append(
+                        `<div class="local-error-message" style="color:#d9534f; font-size:12px; margin-top:5px; font-weight:bold; display:block;">
+                            <i class="fa fa-exclamation-circle"></i>  <i class="fa fa-hand-o-up"></i> Correct this number
+                        </div>`
+                    );
+
+                }, 350); // 350ms delay waits for tab/accordion animation
+
             } else {
-                // GENERIC ERROR
+                // FALLBACK: Could not identify specific field (generic server error)
+                // Still strip Python crud from message
+                let clean_msg = raw_error.replace("frappe.exceptions.InvalidPhoneNumberError:", "").trim();
+                // Remove "Traceback..." if present
+                if(clean_msg.includes("Traceback")) clean_msg = "Phone number validation failed.";
+
                 frappe.msgprint({
-                    title: __('Error'),
+                    title: __('Validation Error'),
                     indicator: 'red',
-                    message: raw_error || 'An unexpected error occurred.'
+                    message: clean_msg || "Please check all phone numbers are valid for their country codes."
                 });
             }
         }

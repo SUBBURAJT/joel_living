@@ -75,6 +75,7 @@ class WorkflowOverride extends frappe.ui.form.States {
                                             ],
                                             (data) => {
                                                 me.frm.set_value("custom_lead_lost_reason", data.lost_reason);
+                                                me.frm.set_value("custom_lead_lost_date", frappe.datetime.get_today());
                                                 me.frm.save().then(() => {
                                                     me.apply_workflow_action(d);
                                                 });

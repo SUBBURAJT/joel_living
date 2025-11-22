@@ -1624,6 +1624,7 @@ def approve_registration(doc_name):
             try:
                 lead = frappe.get_doc("Lead", doc.lead)
                 lead.custom_lead_status = "Closed"
+                lead.custom_sales_closed_date = frappe.utils.today()
                 # Do not modify commission fields here (per request)
                 lead.save(ignore_permissions=True)
 

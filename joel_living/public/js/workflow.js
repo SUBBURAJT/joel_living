@@ -3431,13 +3431,11 @@ function attachLiveValidation(control) {
     //         },
     //     });
     // };
-    
-const handle_submission = (action_type) => {
+    const handle_submission = (action_type) => {
     // 1. UI LOCKING
     confirm_dialog.hide();
     const primary_btn = dialog.get_primary_btn();
     primary_btn.prop('disabled', true);
-    // frappe.show_alert({ message: __('Processing...'), indicator: 'blue' });
 
     frappe.call({
         method: "joel_living.custom_lead.create_sales_registration",
@@ -3460,125 +3458,148 @@ const handle_submission = (action_type) => {
             if (cur_dialog && cur_dialog.title && cur_dialog.title.includes("Error")) cur_dialog.hide();
             primary_btn.prop('disabled', false);
 
+            // Remove old error highlights
             wrapper.find('.form-group').removeClass('has-error');
             wrapper.find('.control-input').css('border-color', '');
             wrapper.find('.local-error-message').remove();
             wrapper.find('.field-error').remove();
 
             // 3. GET RAW ERROR STRING & CLEAN IT
+            // Handle complex double-JSON error strings
             let raw_error = "";
             try {
-                raw_error = (r.message || "") + " ";
-                if (r._server_messages) raw_error += JSON.parse(r._server_messages).join(" ");
-            } catch (e) {}
-            
-            // Extract the specific bad value reported by python (e.g. "+91-865")
-            // Regex looks for: "Phone Number [CAPTURE_THIS] set in field"
-            const match_val = raw_error.match(/Phone Number\s+([0-9+\-\(\)\s]+?)\s+set in field/i);
-            // Create a comparison string of just digits and +, e.g., "+91865"
-            const error_val_clean = match_val ? match_val[1].replace(/[^0-9+]/g, "") : "";
+                const full_msg = (r.message || "") + (r._server_messages || "");
+                // Extract clear messages from the JSON soup
+                // This removes {"message": "...", ...} wrappers
+                raw_error = full_msg.replace(/\{"message":\s*"([^"]+)"[^}]+\}/g, '$1 ').replace(/\\"/g, '"');
+            } catch (e) {
+                raw_error = String(r.message || "Unknown Error");
+            }
 
             // 4. IDENTIFY THE SPECIFIC UI CONTROL
             let target = null;
-
-            // Strategy: Value-Based Matching (The Priority)
-            // We iterate ALL controls. The field that contains the exact numbers mentioned 
-            // in the error is the culprit, regardless of its fieldname.
-            const phoneKeys = Object.keys(controls).filter(k => 
-                controls[k] && (controls[k].df.fieldtype === 'Phone' || k.includes('phone'))
-            );
-
-            if (error_val_clean && error_val_clean.length > 2) {
-                for (let key of phoneKeys) {
+            let error_found_exact = false;
+            
+            // RegEx to grab the specific bad phone number digits from the error
+            // Captures: "+91-955107870" or "955107870" 
+            const match_val = raw_error.match(/Phone Number\s+([0-9+\-\(\)\s]+?)\s+(?:set|is)/i);
+            
+            if (match_val && match_val[1]) {
+                // Strip everything except digits for strict comparison (e.g. "955107870")
+                const error_digits = match_val[1].replace(/[^0-9]/g, "");
+                
+                // Iterate ALL controls to find the best match
+                const allKeys = Object.keys(controls); 
+                
+                for (let key of allKeys) {
                     const control = controls[key];
-                    const val = control.get_value(); // e.g. "+91-865"
-                    
-                    if (val) {
-                        const val_clean = String(val).replace(/[^0-9+]/g, ""); // +91865
-                        
-                        // Precise Match:
-                        // 1. If the UI input equals the Error value (+91865 === +91865)
-                        // 2. Or if the UI input *contains* the Error value (handling occasional parsing diffs)
-                        if (val_clean === error_val_clean || (val_clean.includes(error_val_clean) && val_clean.length === error_val_clean.length)) {
+                    if (!control) continue;
+
+                    // Check relevant fields only
+                    if (['Phone', 'Data'].includes(control.df.fieldtype) || key.includes('phone')) {
+                        const val = control.get_value();
+                        if (!val) continue;
+
+                        const val_digits = String(val).replace(/[^0-9]/g, ""); // Current field digits
+
+                        // SCENARIO 1: Exact Match (Priority)
+                        // This catches the JO field that has the missing digit (e.g., 9 digits === 9 digits)
+                        if (val_digits === error_digits) {
                             target = control;
-                            break; // FOUND IT! Stop searching.
+                            error_found_exact = true;
+                            // console.log("Exact match found on:", key);
+                            break; // We found the exact culprit, stop searching.
+                        }
+
+                        // SCENARIO 2: Partial/Fuzzy Match (Backup)
+                        // Only sets if we haven't found an exact match yet.
+                        // This prevents "Main Phone" (10 digits) from being selected just because it 'contains' the Error (9 digits).
+                        if (!error_found_exact && val_digits.includes(error_digits)) {
+                            // Store as a potential target, but keep looking for an exact match in other fields
+                            target = control;
                         }
                     }
                 }
             }
 
-            // 5. HANDLING & NAVIGATION
+            // Fallback: Look for field name in error if value match failed
+            if (!target) {
+                const match_field = raw_error.match(/field\s+([a-zA-Z0-9_]+)(\s|is|not|\.|")/i);
+                if (match_field && match_field[1] && controls[match_field[1]]) {
+                    target = controls[match_field[1]];
+                }
+            }
+
+            // 5. HIGHLIGHT THE FOUND TARGET
             if (target) {
-                // Define Dynamic Country Code for Message
-                let dynamic_code = "+971"; 
-                const parts = String(target.get_value()).split('-');
-                if (parts.length > 0 && parts[0].includes('+')) dynamic_code = parts[0].trim();
-
-                frappe.msgprint({
-                    title: __('Invalid Phone Number'),
-                    indicator: 'red',
-                    message: `The number <b>${target.get_value()}</b> is not valid for country code <b>${dynamic_code}</b>.<br>Please correct the highlighted field.`
-                });
-
+                // Logic to Switch Tabs and Open Accordions
                 const $wrapper = $(target.wrapper);
 
-                // STEP A: Switch Tabs
-                // Find which tab-pane this control resides in
+                // A. Open Parent Accordion (Joint Owners)
+                const $panelCollapse = $wrapper.closest('.panel-collapse');
+                if ($panelCollapse.length) {
+                    // Bootstrap 4 method to show
+                    if(!$panelCollapse.hasClass('show')) $panelCollapse.collapse('show');
+                }
+
+                // B. Switch Parent Tab
                 const tabPane = $wrapper.closest('.tab-pane');
                 if (tabPane.length) {
-                    const tabId = tabPane.attr('id'); // e.g. "tab-joint-owners"
+                    const tabId = tabPane.attr('id');
                     const $tabBtn = wrapper.find(`.nav-link[data-target="#${tabId}"]`);
                     if ($tabBtn.length && !$tabBtn.hasClass('active')) {
                         $tabBtn.trigger('click');
                     }
                 }
 
-                // STEP B: Expand Accordion (For Joint Owners)
-                // Find if control is inside a collapsible panel
-                const $panelCollapse = $wrapper.closest('.panel-collapse');
-                if ($panelCollapse.length && !$panelCollapse.hasClass('show')) {
-                    $panelCollapse.collapse('show');
-                }
-
-                // STEP C: Scroll & Highlight (Delay for animations)
+                // C. Scroll and Apply Styles (Delay for tab animation)
                 setTimeout(() => {
-                    // Scroll logic
+                    // Scroll to input
                     if (target.input) {
                         target.input.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                        target.input.focus();
-                    } else {
-                        $wrapper[0].scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        $(target.input).focus();
                     }
 
-                    // Apply Red Styles
-                    $wrapper.closest('.form-group').addClass('has-error'); // Bootstrap error state
-                    
-                    const $inputEl = $wrapper.find('input, select, .input-with-feedback');
-                    $inputEl.css({
+                    // Add red borders
+                    $wrapper.closest('.form-group').addClass('has-error');
+                    $wrapper.find('input, select, .input-with-feedback').css({
                         'border': '2px solid #d9534f', 
                         'background-color': '#fff5f5'
                     });
 
-                    // Append Error Text Locally
+                    // Clean Display Message for the UI
+                    const invalid_num = match_val ? match_val[1] : target.get_value();
+                    
+                    // Show Error Message Below Field
                     $wrapper.find('.control-input-wrapper').append(
                         `<div class="local-error-message" style="color:#d9534f; font-size:12px; margin-top:5px; font-weight:bold; display:block;">
-                            <i class="fa fa-exclamation-circle"></i>  <i class="fa fa-hand-o-up"></i> Correct this number
+                             <i class="fa fa-exclamation-circle"></i> Value <b>${invalid_num}</b> is invalid.
                         </div>`
                     );
+                    
+                    // Toast message
+                    frappe.msgprint({
+                        title: __('Invalid Data'),
+                        indicator: 'red',
+                        message: `The value <b>${invalid_num}</b> in field <b>${target.df.label}</b> is incorrect format.`
+                    });
 
-                }, 350); // 350ms delay waits for tab/accordion animation
+                }, 400); 
 
             } else {
-                // FALLBACK: Could not identify specific field (generic server error)
-                // Still strip Python crud from message
-                let clean_msg = raw_error.replace("frappe.exceptions.InvalidPhoneNumberError:", "").trim();
-                // Remove "Traceback..." if present
-                if(clean_msg.includes("Traceback")) clean_msg = "Phone number validation failed.";
+                // FINAL FALLBACK: Generic Error if we really can't find the field
+                let clean_msg = raw_error
+                    .replace(/__frappe_exc_id.*/, '')
+                    .replace("frappe.exceptions.InvalidPhoneNumberError:", "")
+                    .replace("frappe.exceptions.ValidationError:", "")
+                    .trim();
+                
+                if(clean_msg.length < 2) clean_msg = "Validation Error: Please check your phone number formats.";
 
                 frappe.msgprint({
                     title: __('Validation Error'),
                     indicator: 'red',
-                    message: clean_msg || "Please check all phone numbers are valid for their country codes."
+                    message: clean_msg
                 });
             }
         }

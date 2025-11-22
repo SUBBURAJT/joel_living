@@ -3431,7 +3431,7 @@ function attachLiveValidation(control) {
     //         },
     //     });
     // };
-    const handle_submission = (action_type) => {
+   const handle_submission = (action_type) => {
     // 1. UI LOCKING
     confirm_dialog.hide();
     const primary_btn = dialog.get_primary_btn();
@@ -3453,159 +3453,147 @@ function attachLiveValidation(control) {
             }
         },
         error: (r) => {
-            // 2. STOP SYSTEM MESSAGES & CLEAN UI
+            // 2. UI CLEANUP - Hide initial system popup immediately
             frappe.hide_msgprint(true);
-            if (cur_dialog && cur_dialog.title && cur_dialog.title.includes("Error")) cur_dialog.hide();
             primary_btn.prop('disabled', false);
 
-            // Remove old error highlights
+            // Clear internal highlighting
             wrapper.find('.form-group').removeClass('has-error');
             wrapper.find('.control-input').css('border-color', '');
             wrapper.find('.local-error-message').remove();
             wrapper.find('.field-error').remove();
 
-            // 3. GET RAW ERROR STRING & CLEAN IT
-            // Handle complex double-JSON error strings
+            // 3. EXTRACT & CLEAN ERROR MESSAGE
             let raw_error = "";
-            try {
-                const full_msg = (r.message || "") + (r._server_messages || "");
-                // Extract clear messages from the JSON soup
-                // This removes {"message": "...", ...} wrappers
-                raw_error = full_msg.replace(/\{"message":\s*"([^"]+)"[^}]+\}/g, '$1 ').replace(/\\"/g, '"');
-            } catch (e) {
-                raw_error = String(r.message || "Unknown Error");
+            
+            // Attempt to parse _server_messages (which is usually a JSON string ARRAY)
+            if (r._server_messages) {
+                try {
+                    const messages = JSON.parse(r._server_messages);
+                    const combined = JSON.parse(messages.join(" ")); // Sometimes it's double-encoded
+                    raw_error = combined.message || combined;
+                } catch (e) {
+                    // Fallback if not valid JSON
+                    try {
+                        raw_error = JSON.parse(r._server_messages).join(" ");
+                    } catch(e2) {
+                        raw_error = r.message || "Unknown Error";
+                    }
+                }
+            } else {
+                raw_error = r.message || "";
             }
 
-            // 4. IDENTIFY THE SPECIFIC UI CONTROL
+            // STRING HTML: Remove <b>, <strong>, etc for matching
+            let clean_error_text = String(raw_error).replace(/<\/?[^>]+(>|$)/g, "");
+
+            // 4. TARGET IDENTIFICATION LOGIC
             let target = null;
-            let error_found_exact = false;
             
-            // RegEx to grab the specific bad phone number digits from the error
-            // Captures: "+91-955107870" or "955107870" 
-            const match_val = raw_error.match(/Phone Number\s+([0-9+\-\(\)\s]+?)\s+(?:set|is)/i);
-            
+            // RegEx to capture the number. Matches: "Phone Number +91-955... is invalid"
+            const match_val = clean_error_text.match(/Phone Number\s+([0-9+\-\(\)\s]+?)\s+(?:set|is)/i);
+
             if (match_val && match_val[1]) {
-                // Strip everything except digits for strict comparison (e.g. "955107870")
+                // Get pure digits from error for comparison (e.g., "91955107870")
                 const error_digits = match_val[1].replace(/[^0-9]/g, "");
-                
-                // Iterate ALL controls to find the best match
                 const allKeys = Object.keys(controls); 
-                
+
                 for (let key of allKeys) {
                     const control = controls[key];
                     if (!control) continue;
-
-                    // Check relevant fields only
                     if (['Phone', 'Data'].includes(control.df.fieldtype) || key.includes('phone')) {
                         const val = control.get_value();
                         if (!val) continue;
+                        
+                        const val_digits = String(val).replace(/[^0-9]/g, "");
 
-                        const val_digits = String(val).replace(/[^0-9]/g, ""); // Current field digits
-
-                        // SCENARIO 1: Exact Match (Priority)
-                        // This catches the JO field that has the missing digit (e.g., 9 digits === 9 digits)
+                        // EXACT MATCH (100% confidence)
                         if (val_digits === error_digits) {
                             target = control;
-                            error_found_exact = true;
-                            // console.log("Exact match found on:", key);
-                            break; // We found the exact culprit, stop searching.
+                            break; 
                         }
-
-                        // SCENARIO 2: Partial/Fuzzy Match (Backup)
-                        // Only sets if we haven't found an exact match yet.
-                        // This prevents "Main Phone" (10 digits) from being selected just because it 'contains' the Error (9 digits).
-                        if (!error_found_exact && val_digits.includes(error_digits)) {
-                            // Store as a potential target, but keep looking for an exact match in other fields
+                        // SUBSTRING MATCH (Backup, check if length > 5 to avoid tiny matches)
+                        if (!target && error_digits.length > 5 && val_digits.includes(error_digits)) {
                             target = control;
                         }
                     }
                 }
             }
 
-            // Fallback: Look for field name in error if value match failed
+            // Fallback: Check for field name
             if (!target) {
-                const match_field = raw_error.match(/field\s+([a-zA-Z0-9_]+)(\s|is|not|\.|")/i);
+                const match_field = clean_error_text.match(/field\s+([a-zA-Z0-9_]+)/i);
                 if (match_field && match_field[1] && controls[match_field[1]]) {
                     target = controls[match_field[1]];
                 }
             }
 
-            // 5. HIGHLIGHT THE FOUND TARGET
+            // 5. HIGHLIGHT TARGET & DISPLAY ERROR
             if (target) {
-                // Logic to Switch Tabs and Open Accordions
                 const $wrapper = $(target.wrapper);
-
-                // A. Open Parent Accordion (Joint Owners)
+                
+                // Tabs & Accordion logic
                 const $panelCollapse = $wrapper.closest('.panel-collapse');
-                if ($panelCollapse.length) {
-                    // Bootstrap 4 method to show
-                    if(!$panelCollapse.hasClass('show')) $panelCollapse.collapse('show');
-                }
-
-                // B. Switch Parent Tab
+                if ($panelCollapse.length && !$panelCollapse.hasClass('show')) $panelCollapse.collapse('show');
+                
                 const tabPane = $wrapper.closest('.tab-pane');
                 if (tabPane.length) {
                     const tabId = tabPane.attr('id');
                     const $tabBtn = wrapper.find(`.nav-link[data-target="#${tabId}"]`);
-                    if ($tabBtn.length && !$tabBtn.hasClass('active')) {
-                        $tabBtn.trigger('click');
-                    }
+                    if ($tabBtn.length && !$tabBtn.hasClass('active')) $tabBtn.trigger('click');
                 }
 
-                // C. Scroll and Apply Styles (Delay for tab animation)
+                // Display logic with small delay
                 setTimeout(() => {
-                    // Scroll to input
+                    // A. Scroll & Focus
                     if (target.input) {
                         target.input.scrollIntoView({ behavior: 'smooth', block: 'center' });
                         $(target.input).focus();
                     }
 
-                    // Add red borders
+                    // B. Red Border styling
                     $wrapper.closest('.form-group').addClass('has-error');
                     $wrapper.find('input, select, .input-with-feedback').css({
                         'border': '2px solid #d9534f', 
                         'background-color': '#fff5f5'
                     });
 
-                    // Clean Display Message for the UI
-                    const invalid_num = match_val ? match_val[1] : target.get_value();
-                    
-                    // Show Error Message Below Field
+                    // C. Inline Error (This was working fine)
+                    const display_num = match_val ? match_val[1].trim() : "entered";
                     $wrapper.find('.control-input-wrapper').append(
-                        `<div class="local-error-message" style="color:#d9534f; font-size:12px; margin-top:5px; font-weight:bold; display:block;">
-                             <i class="fa fa-exclamation-circle"></i> Value <b>${invalid_num}</b> is invalid.
+                        `<div class="local-error-message" style="color:#d9534f; font-size:12px; margin-top:5px; font-weight:bold;">
+                             <i class="fa fa-exclamation-circle"></i> Value ${display_num} is invalid.
                         </div>`
                     );
-                    
-                    // Toast message
+
+                    // D. GLOBAL ALERT (Fixed: using simple text string)
+                    // We don't put HTML in the message to avoid the blank box issue
                     frappe.msgprint({
-                        title: __('Invalid Data'),
+                        title: __('Validation Failed'), // Explicit title
                         indicator: 'red',
-                        message: `The value <b>${invalid_num}</b> in field <b>${target.df.label}</b> is incorrect format.`
+                        message: __('Please check the highlighted field: <b>{0}</b> contains an invalid number.', [target.df.label])
                     });
 
-                }, 400); 
-
+                }, 350);
             } else {
-                // FINAL FALLBACK: Generic Error if we really can't find the field
-                let clean_msg = raw_error
+                // Generic Fallback
+                let fallback_msg = clean_error_text
                     .replace(/__frappe_exc_id.*/, '')
                     .replace("frappe.exceptions.InvalidPhoneNumberError:", "")
                     .replace("frappe.exceptions.ValidationError:", "")
                     .trim();
-                
-                if(clean_msg.length < 2) clean_msg = "Validation Error: Please check your phone number formats.";
+
+                if (fallback_msg.length < 5) fallback_msg = "Validation Error. Please check your data.";
 
                 frappe.msgprint({
-                    title: __('Validation Error'),
+                    title: __('Error'),
                     indicator: 'red',
-                    message: clean_msg
+                    message: fallback_msg
                 });
             }
         }
     });
 };
-
 
     const confirm_dialog = new frappe.ui.Dialog({
         title: __('Confirm Submission'),

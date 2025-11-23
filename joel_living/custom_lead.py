@@ -855,7 +855,7 @@ import json # Used to handle data from the client script
 
 @frappe.whitelist()
 def create_sales_registration(lead_name, data, action='save_draft'):
-    print("action", action)
+    # print("action", action)
     """
     Creates a new 'Sales Registration Form' document from the data
     submitted by the custom dialog in the Lead form.
@@ -1291,7 +1291,7 @@ import json
 
 @frappe.whitelist()
 def update_sales_registration_details(doc_name: str, data: str):
-    print("update_sales_registration_details", doc_name, data)
+    # print("update_sales_registration_details", doc_name, data)
     """
     Updates a Sales Registration Form document with new values, including child tables.
     This version handles child table updates correctly by leveraging Frappe's ORM.

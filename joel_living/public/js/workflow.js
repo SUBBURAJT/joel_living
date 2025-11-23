@@ -2262,10 +2262,10 @@ const setup_uae_phone_data_control = (control) => {
     const validate_main_phone = (value) => {
         if (!value) return { passed: true, message: '' };
         // For Phone field, value includes country code
-        const digits = value.replace(/\D/g, '');
-        if (digits.length !== 12 || !digits.startsWith('971')) {
-            return { passed: false, message: 'Main phone number must be a valid UAE number (9 digits after +971).' };
-        }
+        // const digits = value.replace(/\D/g, '');
+        // if (digits.length !== 12 || !digits.startsWith('971')) {
+        //     return { passed: false, message: 'Main phone number must be a valid UAE number (9 digits after +971).' };
+        // }
         return { passed: true, message: '' };
     };
    // **********************************************
@@ -2344,41 +2344,103 @@ const apply_strict_file_validation = (control) => {
     }, 250); // A safe delay to ensure the control is fully rendered in the DOM.
 };
     // Global validation handler for individual controls - LOCAL ERROR DISPLAY (IMPROVED BLUR/CHANGE HANDLER)
-    const attach_validation_onchange = (control, validation_func) => {
-        if (!control) return;
+    // const attach_validation_onchange = (control, validation_func) => {
+    //     if (!control) return;
        
-        let $elements_to_check = [];
-        $elements_to_check.push($(control.input));
-        if (control.fieldtype === 'Link') { $elements_to_check.push($(control.wrapper).find('.btn-link')); }
-        if (control.fieldtype === 'Attach') { $elements_to_check.push($(control.wrapper).find('.attach-button')); }
-        if (control.fieldtype === 'Select' || control.fieldtype === 'Phone') { $elements_to_check.push($(control.select) || $(control.input)); }
-        // Remove previous handlers to prevent double triggering
-        for (const $element of $elements_to_check) {
-            $element.off('blur.customvalidate change.customvalidate');
-        }
-        for (const $element of $elements_to_check) {
-            $element.on('blur.customvalidate change.customvalidate', (e) => {
+    //     let $elements_to_check = [];
+    //     $elements_to_check.push($(control.input));
+    //     if (control.fieldtype === 'Link') { $elements_to_check.push($(control.wrapper).find('.btn-link')); }
+    //     if (control.fieldtype === 'Attach') { $elements_to_check.push($(control.wrapper).find('.attach-button')); }
+    //     if (control.fieldtype === 'Select' || control.fieldtype === 'Phone') { $elements_to_check.push($(control.select) || $(control.input)); }
+    //     // Remove previous handlers to prevent double triggering
+    //     for (const $element of $elements_to_check) {
+    //         $element.off('blur.customvalidate change.customvalidate');
+    //     }
+    //     for (const $element of $elements_to_check) {
+    //         $element.on('blur.customvalidate change.customvalidate', (e) => {
                
-                const is_attach = control.fieldtype === 'Attach';
+    //             const is_attach = control.fieldtype === 'Attach';
                
-                const value = control.get_value();
+    //             const value = control.get_value();
                
-                const result = validation_func(value);
+    //             const result = validation_func(value);
+    //             const $wrapper = $(control.wrapper);
+    //             $wrapper.find('.local-error-message').remove();
+               
+    //             // Determine target element for red border
+    //             const $target_border = is_attach ? $wrapper.find('.attach-button').closest('.input-with-feedback') : $(control.input).length ? $(control.input) : $wrapper.find('.control-input');
+    //             $target_border.css('border-color', '');
+    //             if (!result.passed) {
+    //                 $wrapper.append(`<p class="local-error-message" style="color: red; font-size: 11px; margin-top: 5px;">${result.message}</p>`);
+    //                 $target_border.css('border-color', 'red');
+    //             } else {
+    //                  $wrapper.find('.control-label').css('color', 'inherit');
+    //             }
+    //         });
+    //     }
+    // }
+
+    const attach_validation_onchange = (control, validation_func) => {
+    if (!control) return;
+
+    let $elements_to_check = [];
+    $elements_to_check.push($(control.input));
+    if (control.fieldtype === 'Link') { $elements_to_check.push($(control.wrapper).find('.btn-link')); }
+    if (control.fieldtype === 'Attach') { $elements_to_check.push($(control.wrapper).find('.attach-button')); }
+    if (control.fieldtype === 'Select' || control.fieldtype === 'Phone') { $elements_to_check.push($(control.select) || $(control.input)); }
+
+    // Remove previous handlers
+    for (const $element of $elements_to_check) {
+        $element.off('blur.customvalidate change.customvalidate');
+    }
+
+    for (const $element of $elements_to_check) {
+        $element.on('blur.customvalidate change.customvalidate', (e) => {
+            const is_attach = control.fieldtype === 'Attach';
+            const value = control.get_value();
+
+            // --- FIX 1: STOP PREMATURE RED BORDERS ---
+            // If the field is empty (or just the phone prefix), we clear errors and STOP.
+            // We rely on the "Create Registration" button to catch empty required fields.
+            if (!value || value === '' || value === '+971-' || value === '+971') {
                 const $wrapper = $(control.wrapper);
                 $wrapper.find('.local-error-message').remove();
-               
-                // Determine target element for red border
-                const $target_border = is_attach ? $wrapper.find('.attach-button').closest('.input-with-feedback') : $(control.input).length ? $(control.input) : $wrapper.find('.control-input');
-                $target_border.css('border-color', '');
-                if (!result.passed) {
-                    $wrapper.append(`<p class="local-error-message" style="color: red; font-size: 11px; margin-top: 5px;">${result.message}</p>`);
-                    $target_border.css('border-color', 'red');
+                $wrapper.find('.control-input').css('border-color', '');
+                $wrapper.find('.attach-button').closest('.input-with-feedback').css('border-color', '');
+                $wrapper.find('.select-container').css('border', '');
+                return; 
+            }
+
+            const result = validation_func(value);
+            const $wrapper = $(control.wrapper);
+            $wrapper.find('.local-error-message').remove();
+
+            // Determine target element for red border
+            const $target_border = is_attach ? $wrapper.find('.attach-button').closest('.input-with-feedback') : $(control.input).length ? $(control.input) : $wrapper.find('.control-input');
+            $target_border.css('border-color', ''); // Reset first
+            $wrapper.find('.select-container').css('border', '');
+
+            if (!result.passed) {
+                // If it fails FORMAT validation (e.g. invalid email), show red immediately
+                const msg_html = `<p class="local-error-message" style="color: red; font-size: 11px; margin-top: 5px;">${result.message}</p>`;
+                
+                if(is_attach) {
+                    $wrapper.find('.control-input-wrapper').append(msg_html);
                 } else {
-                     $wrapper.find('.control-label').css('color', 'inherit');
+                    $wrapper.append(msg_html);
                 }
-            });
-        }
+
+                if (control.fieldtype === 'Select') {
+                    $wrapper.find('.select-container').css('border', '1px solid red');
+                } else {
+                    $target_border.css('border-color', 'red');
+                }
+            } else {
+                $wrapper.find('.control-label').css('color', 'inherit');
+            }
+        });
     }
+}
     // **********************************************
    
     // ** CUSTOM CLOSE CONFIRMATION DIALOG FUNCTION **
@@ -2734,7 +2796,7 @@ const dob_control = make_control({ fieldname: 'date_of_birth', label: 'Date of B
 
     // --------------------------------------------------------------------------
     // NEW: Attach phone validation for main_phone_number
-    // attach_validation_onchange(main_phone_control, validate_main_phone);
+    attach_validation_onchange(main_phone_control, validate_main_phone);
 
     const uae_phone_control = make_control({ fieldname: 'uae_phone_number', label: 'UAE Phone Number', fieldtype: 'Data', description: 'Fixed to +971 for UAE' }, 'client-col-2');
     setup_uae_phone_data_control(uae_phone_control);
@@ -3042,7 +3104,7 @@ const jo_dob_control = make_control({ fieldname: `${prefix}_date_of_birth`, labe
     }
 }, 50);
                 // NEW: Attach main phone validation for joint owner
-                // attach_validation_onchange(jo_phone_control, validate_main_phone);
+                attach_validation_onchange(jo_phone_control, validate_main_phone);
 
                 const jo_uae_phone_control = make_control({ fieldname: `${prefix}_uae_phone_number`, label: 'UAE Phone Number', fieldtype: 'Data', description: 'Fixed to +971 for UAE' }, `${prefix}_col2`);
                 setup_uae_phone_data_control(jo_uae_phone_control);
@@ -3229,6 +3291,7 @@ function attachLiveValidation(control) {
             let custom_validation_result = { passed: true, message: "" };
             if (key.endsWith('passport_expiry_date') && value) { custom_validation_result = validate_future_date(value); }
             else if (key.endsWith('passport_number') && value) { custom_validation_result = validate_passport_chars(value); }
+            else if (key.endsWith('main_phone_number') && value) { custom_validation_result = validate_main_phone(value); }
             else if ((key === 'date_of_birth' || key.endsWith('_date_of_birth')) && value) { custom_validation_result = validate_dob(value); }
             else if (key === 'unit_number' && value) { custom_validation_result = validate_unit_number(value); }
             else if ((key === 'email' || key.endsWith('_email')) && value) { custom_validation_result = validate_email(value); }

@@ -462,7 +462,7 @@ def auto_logout_inactive_users():
         current_time = datetime.now(dubai_tz)
         logout_after = timedelta(hours=2)
 
-        print(f"[Auto Logout] Running at {current_time} (Asia/Dubai)")
+        # print(f"[Auto Logout] Running at {current_time} (Asia/Dubai)")
 
         # =====================================================
         # (1) Midnight full logout
@@ -475,11 +475,11 @@ def auto_logout_inactive_users():
                 """)
                 frappe.db.commit()
                 frappe.logger().info("[Auto Logout] Midnight detected — All users (except Admin & Guest) logged out.")
-                print("Midnight detected — All users (except Admin & Guest) logged out.\n")
+                # print("Midnight detected — All users (except Admin & Guest) logged out.\n")
             except Exception as e:
                 frappe.log_error(f"Midnight logout failed: {str(e)}", "auto_logout_inactive_users")
                 frappe.logger().error(f"[Auto Logout] Midnight logout failed: {str(e)}")
-                print(f"Midnight logout failed: {e}")
+                # print(f"Midnight logout failed: {e}")
 
         # =====================================================
         # (2) Inactivity > 2 HOURS logout
@@ -494,7 +494,7 @@ def auto_logout_inactive_users():
                 GROUP BY owner
             """, as_dict=True)
 
-            print(f"Found {len(login_activities)} users with login records.")
+            # print(f"Found {len(login_activities)} users with login records.")
 
             for entry in login_activities:
                 user = entry.user
@@ -510,30 +510,30 @@ def auto_logout_inactive_users():
                     last_login_time = last_login_time.astimezone(dubai_tz)
 
                 time_diff = current_time - last_login_time
-                print(f"{user} logged in at {last_login_time}, active for {time_diff.total_seconds() / 3600:.2f} hours")
+                # print(f"{user} logged in at {last_login_time}, active for {time_diff.total_seconds() / 3600:.2f} hours")
 
                 if time_diff >= logout_after:
                     try:
                         clear_sessions(user=user)
                         frappe.db.commit()
                         frappe.logger().info(f"[Auto Logout] Logged out {user} (inactive for {time_diff.total_seconds() / 3600:.2f} hours)")
-                        print(f"Logged out {user} (inactive for {time_diff.total_seconds() / 3600:.2f} hours)")
+                        # print(f"Logged out {user} (inactive for {time_diff.total_seconds() / 3600:.2f} hours)")
                     except Exception as e:
                         frappe.log_error(f"Failed to logout {user}: {str(e)}", "auto_logout_inactive_users")
                         frappe.logger().error(f"[Auto Logout] Failed to logout {user}: {str(e)}")
-                        print(f"Failed to logout {user}: {e}")
+                        # print(f"Failed to logout {user}: {e}")
 
         except Exception as e:
             frappe.log_error(f"Inactivity check failed: {str(e)}", "auto_logout_inactive_users")
             frappe.logger().error(f"[Auto Logout] Inactivity check failed: {str(e)}")
-            print(f"Inactivity check failed: {e}")
+            # print(f"Inactivity check failed: {e}")
 
-        print("Auto logout (midnight + inactivity) check completed successfully.\n")
+        # print("Auto logout (midnight + inactivity) check completed successfully.\n")
 
     except Exception as e:
         frappe.log_error(f"Auto logout failed: {str(e)}", "auto_logout_inactive_users")
         frappe.logger().error(f"[Auto Logout] Fatal error: {str(e)}")
-        print(f"Auto logout failed: {e}")
+        # print(f"Auto logout failed: {e}")
 
 
 

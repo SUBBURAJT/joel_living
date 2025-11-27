@@ -1568,7 +1568,7 @@ def get_sales_reg_name_and_status_field(lead_name):
 
 # copyright and imports if any
 @frappe.whitelist()
-def approve_registration(doc_name):
+def approve_registration(doc_name,developer_commission_percentage=None,agent_commission_percentage=None):
     """
     Approve a Sales Registration Form without adding any remark entries.
     - Sets the document status to "Approved"
@@ -1584,7 +1584,7 @@ def approve_registration(doc_name):
     import frappe
 
     # --- 1. Permissions check ---
-    allowed_roles = ["System Manager", "Administrator", "Admin"]
+    allowed_roles = ["System Manager", "Administrator", "Admin","Super Admin"]
     user_roles = frappe.get_roles(frappe.session.user)
     if not any(r in user_roles for r in allowed_roles):
         frappe.throw(frappe._("You are not permitted to approve Sales Registration Forms."))
@@ -1624,6 +1624,8 @@ def approve_registration(doc_name):
             try:
                 lead = frappe.get_doc("Lead", doc.lead)
                 lead.custom_lead_status = "Closed"
+                lead.custom_developer_commission_percentage = developer_commission_percentage
+                lead.custom_agent_commission_percentage = agent_commission_percentage
                 lead.custom_sales_closed_date = frappe.utils.today()
                 # Do not modify commission fields here (per request)
                 lead.save(ignore_permissions=True)

@@ -363,23 +363,26 @@ def get_lead_dashboard_data(lead_owner=None, from_date=None, to_date=None, custo
 
     # 4. Total Sales Value
     # build base conditions (use aliases s for sales, l for lead)
-    sales_conditions = [
-        "s.status = 'Approved'",
-        "s.creation >= %(from)s",
-        "s.creation <= %(to)s"
-    ]
+    sales_conditions = ["s.status = 'Approved'"]
+    
+    # Updated: Apply Date Range to LEAD's 'custom_sales_closed_date' 
+    # (Instead of Sales Form creation date)
+    sales_conditions.append("l.custom_sales_closed_date >= %(from)s")
+    sales_conditions.append("l.custom_sales_closed_date <= %(to)s")
+    
     sales_params = {"from": from_date, "to": to_date_time}
 
     if lead_owner:
         sales_conditions.append("s.owner = %(owner)s")
         sales_params["owner"] = lead_owner
 
-    # join to Lead to filter by custom_lead_category
-    join_sql = ""
     if custom_lead_category:
-        join_sql = "JOIN `tabLead` l ON s.lead = l.name"
         sales_conditions.append("l.custom_lead_category = %(cat)s")
         sales_params["cat"] = custom_lead_category
+
+    # MANDATORY JOIN: We must always join `tabLead` now because we are filtering 
+    # based on `l.custom_sales_closed_date` in the main WHERE clause.
+    join_sql = "JOIN `tabLead` l ON s.lead = l.name"
 
     where_sql = " AND ".join(sales_conditions)
 

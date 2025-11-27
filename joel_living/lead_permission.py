@@ -395,7 +395,7 @@ def process_final_unassignment(lead_name, owner):
         doc = frappe.get_doc("Lead", lead_name)
         
         # Final check to ensure the state hasn't changed since dispatch
-        if doc.lead_owner == owner and doc.status != "Closed":
+        if doc.lead_owner == owner and doc.custom_lead_status != "Closed":
             # Unassign the lead permanently
             doc.lead_owner = None
             doc.custom_assigned_at = None
@@ -449,7 +449,7 @@ def dispatch_expired_reapproved_leads():
             ) AS H ON L.name = H.lead
             WHERE
                 L.lead_owner IS NOT NULL
-                AND L.status != 'Closed'
+                AND L.custom_lead_status != 'Closed'
                 AND L.custom_assigned_at <= %(cutoff_date)s
                 AND H.rn = 1
                 AND H.action = 'Re-approved Assignment'

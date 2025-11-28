@@ -31,6 +31,7 @@
   {
    "fieldname": "sales_representative",
    "fieldtype": "Table MultiSelect",
+   "ignore_user_permissions": 1,
    "label": "Sales Representative",
    "options": "Multiselect Sales Representative"
   }
@@ -38,7 +39,7 @@
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-11-18 21:02:18.254938",
+ "modified": "2025-11-20 00:42:33.778940",
  "modified_by": "Administrator",
  "module": "Joel Living",
  "name": "Developer",
@@ -56,6 +57,15 @@
    "role": "System Manager",
    "share": 1,
    "write": 1
+  },
+  {
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Sales Agent",
+   "share": 1
   }
  ],
  "row_format": "Dynamic",

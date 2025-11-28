@@ -1631,7 +1631,7 @@ def approve_registration(doc_name,developer_commission_percentage=None,agent_com
                 lead.save(ignore_permissions=True)
 
                 # try to resolve owner email and lead url for notifications
-                lead_owner_email = frappe.db.get_value("User", lead.owner, "email")
+                lead_owner_email = frappe.db.get_value("User", lead.lead_owner, "email")
                 lead_url = f"{frappe.utils.get_url()}/app/lead/{doc.lead}"
             except Exception as lead_err:
                 frappe.log_error(title="Lead Update Error", message=f"Failed to update Lead {doc.lead} for Sales Registration {doc_name}: {str(lead_err)}")
@@ -1892,7 +1892,7 @@ def reject_sales_registration(doc_name, rejected_fields_json, rejection_reason, 
     import frappe
 
     # --- 1. Permission check ---
-    allowed_roles = ["System Manager", "Administrator", "Admin"]
+    allowed_roles = ["System Manager", "Administrator", "Admin","Super Admin"]
     user_roles = frappe.get_roles(frappe.session.user)
     if not any(r in user_roles for r in allowed_roles):
         frappe.throw("You are not permitted to reject Sales Registration Forms.")
@@ -1987,7 +1987,7 @@ def reject_sales_registration(doc_name, rejected_fields_json, rejection_reason, 
             lead.custom_fine_details = html
             lead.save(ignore_permissions=True)
 
-            lead_owner_email = frappe.db.get_value("User", lead.owner, "email")
+            lead_owner_email = frappe.db.get_value("User", lead.lead_owner, "email")
             lead_url = f"{frappe.utils.get_url()}/app/lead/{doc.lead}"
 
         except Exception as e:

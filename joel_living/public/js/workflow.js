@@ -17,7 +17,9 @@ class WorkflowOverride extends frappe.ui.form.States {
                 if (!frappe.user_roles.includes(d.allowed)) {
                     return;
                 }
-
+                 if (d.action === "Close") {
+                        return; // This skips the current iteration, effectively hiding the button
+                    }
                 if (
                     me.frm.doc.doctype === "Lead" &&
                     frappe.user.has_role("Sales Agent") &&

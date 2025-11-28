@@ -15,28 +15,25 @@
    "fieldname": "receipt_date",
    "fieldtype": "Date",
    "in_list_view": 1,
-   "label": "Date",
-   "reqd": 1
+   "label": "Date"
   },
   {
    "fieldname": "amount",
    "fieldtype": "Currency",
    "in_list_view": 1,
-   "label": "Amount (AED)",
-   "reqd": 1
+   "label": "Amount (AED)"
   },
   {
    "fieldname": "receipt_file",
    "fieldtype": "Attach",
-   "label": "Receipt File",
-   "reqd": 1
+   "label": "Receipt File"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2025-11-03 22:03:42.834243",
+ "modified": "2025-11-28 23:07:59.689110",
  "modified_by": "Administrator",
  "module": "Joel Living",
  "name": "Sales Registration Receipt",
